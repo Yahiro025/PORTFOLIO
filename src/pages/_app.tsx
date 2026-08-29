@@ -4,6 +4,7 @@ import type { FC, ReactNode } from 'react'
 import type { AppProps } from 'next/app'
 
 import { Geist, Geist_Mono } from 'next/font/google'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 
 const geistSans = Geist({
     variable: '--font-sans',
@@ -19,6 +20,7 @@ const App: FC<AppProps> = ({ Component, pageProps }): ReactNode => {
     return (
         <div className={`${geistSans.variable} ${geistMono.variable} h-full font-sans antialiased`}>
             <Component {...pageProps} />
+            <SpeedInsights />
         </div>
     )
 }
