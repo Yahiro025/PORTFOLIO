@@ -1,0 +1,20 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="64" height="64" rx="14" fill="white"/>
+    <g transform="translate(8, 10) scale(0.13)">
+        <path d="M234.86 85.7735C234.86 58.6851 212.901 36.7255 185.812 36.7255C158.724 36.7255 136.764 58.6851 136.764 85.7735C136.764 112.862 158.724 134.821 185.812 134.821V171.547C138.441 171.547 100.039 133.145 100.039 85.7735C100.039 38.4021 138.441 0 185.812 0C233.184 0 271.586 38.4021 271.586 85.7735C271.586 133.145 233.184 171.547 185.812 171.547V134.821C212.901 134.821 234.86 112.862 234.86 85.7735Z" fill="#0a0a0a"/>
+        <rect x="199.155" y="173.453" width="171.547" height="171.547" rx="85.7735" fill="#ECEAFB"/>
+        <rect x="199.155" y="173.453" width="171.547" height="171.547" rx="85.7735" fill="url(#g1)"/>
+        <rect x="199.155" y="173.453" width="171.547" height="171.547" rx="85.7735" fill="url(#g2)"/>
+        <path d="M154.107 259.227C154.107 221.997 123.926 191.816 86.6961 191.816C49.4662 191.816 19.2854 221.997 19.2854 259.227C19.2854 296.457 49.4662 326.637 86.6961 326.637V345C39.3247 345 0.922638 306.598 0.922638 259.227C0.922638 211.855 39.3247 173.453 86.6961 173.453C134.067 173.453 172.47 211.855 172.47 259.227C172.47 306.598 134.067 345 86.6961 345V326.637C123.926 326.637 154.107 296.457 154.107 259.227Z" fill="#0a0a0a"/>
+        <defs>
+            <radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280.414 202.797) rotate(104.621) scale(107.306)">
+                <stop stop-color="#EE818F"/>
+                <stop offset="1" stop-color="#ECEAFB" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(305.243 347.257) rotate(-115.498) scale(162.55)">
+                <stop offset="0.3" stop-color="#362BFF"/>
+                <stop offset="1" stop-color="#ECEAFB" stop-opacity="0"/>
+            </radialGradient>
+        </defs>
+    </g>
+</svg>
