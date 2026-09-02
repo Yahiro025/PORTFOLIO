@@ -6,16 +6,19 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         id: 'bantayog',
         kind: 'project',
         title: 'BANTAYOG',
-        descriptor: 'Offline & Barcode',
+        descriptor: 'Nutrition Subsidy Platform',
         year: '2026',
-        meta: 'TypeScript · 2026',
-        summary: 'A TypeScript project with offline and barcode work documented in its repository history.',
-        owner: 'Yahiro025',
+        meta: 'Full-stack · GovTech · 2026',
+        summary: 'A full-stack nutrition-subsidy platform for LGUs, guardians, and sari-sari merchants, combining QR-based Nutri-Pass credits, server-enforced purchase rules, AI-assisted product recognition, and Stellar settlement.',
+        owner: 'alxxrzfyr',
         repo: 'BANTAYOG',
-        sourceUrl: 'https://github.com/Yahiro025/BANTAYOG',
+        sourceUrl: 'https://github.com/alxxrzfyr/BANTAYOG',
         liveUrl: 'https://admin-bantayog.vercel.app',
         embed: true,
-        stack: ['TypeScript']
+        stack: ['Next.js', 'Hono', 'Supabase', 'Stellar', 'Gemini', 'Turborepo'],
+        role: 'Backend development',
+        team: '4 developers',
+        result: '1st Runner-Up · SparkFest 2026'
     },
     {
         id: 'scholaraid',
@@ -83,10 +86,16 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         title: 'About',
         descriptor: 'Student Profile',
         year: '2026',
-        meta: '2nd year BSCS · PUP',
-        summary: "I'm Bennett Payoyo, a second-year BSCS student at PUP. I build and study web products, developer tools, and data systems through personal and collaborative projects.",
-        avatarUrl: 'https://avatars.githubusercontent.com/u/75754746?v=4',
-        focus: ['Web development', 'Data systems', 'Developer tools']
+        meta: 'Computer Science · PUP',
+        summary: "I'm Bennett Payoyo, a second-year Computer Science student at PUP. I build full-stack applications and developer tools, focusing on backend engineering, databases, and software architecture. I learn primarily by building real projects, studying the systems behind them, and using linting, build checks, and end-to-end tests to catch issues before deployment.",
+        avatarUrl: '/profile.png',
+        focus: ['Full-stack Engineering', 'Backend & APIs', 'Databases', 'Architecture & Tooling'],
+        tagline: 'Full-stack Software Engineering · Backend · Developer Tooling',
+        currently: [
+            'Building and shipping full-stack products',
+            'Strengthening backend, database, testing, and CS fundamentals',
+            'Seeking software engineering internship opportunities'
+        ]
     },
     {
         id: 'resume',
@@ -94,11 +103,16 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         title: 'Resume',
         descriptor: 'Education & Work',
         year: '2026',
-        meta: 'Selected work · Current focus',
-        summary: 'A concise, current student resume based only on reviewed information.',
+        meta: 'Experience · Projects · Education',
+        summary: 'My current experience, projects, education, and technical skills.',
         school: 'Polytechnic University of the Philippines',
         program: 'Bachelor of Science in Computer Science',
         status: 'Second year',
+        highSchools: [
+            { name: 'Bicol Regional Science High School', level: 'Senior high school' },
+            { name: 'Marcial O. Ranola Memorial School', level: 'Junior high school' }
+        ],
+        focus: ['Full-stack Engineering', 'Backend & APIs', 'Databases', 'Architecture & Tooling'],
         sourceUrl: 'https://github.com/Yahiro025/My-Resume',
         pdfUrl: '/resume.pdf'
     },

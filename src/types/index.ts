@@ -57,12 +57,17 @@ export interface ProjectItem extends PortfolioItemBase {
     liveUrl?: string
     embed: boolean
     stack: string[]
+    role?: string
+    team?: string
+    result?: string
 }
 
 export interface AboutItem extends PortfolioItemBase {
     kind: 'about'
     avatarUrl: string
     focus: string[]
+    tagline: string
+    currently: string[]
 }
 
 export interface ResumeItem extends PortfolioItemBase {
@@ -70,6 +75,8 @@ export interface ResumeItem extends PortfolioItemBase {
     school: string
     program: string
     status: string
+    highSchools: { name: string; level: string }[]
+    focus: string[]
     sourceUrl: string
     pdfUrl: string
 }

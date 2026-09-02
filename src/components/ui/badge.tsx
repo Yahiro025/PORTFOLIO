@@ -22,7 +22,7 @@ const badgeVariants = cva(
                 chip:
                     'h-auto rounded-full border-border px-3 py-1 text-foreground',
                 chipMono:
-                    "h-auto rounded-full border-border px-3 py-1 font-mono uppercase tracking-[0.14em] text-muted-foreground"
+                    "h-auto rounded-full border-border px-3 py-1 font-mono uppercase tracking-[0.08em] text-muted-foreground"
             }
         },
         defaultVariants: {

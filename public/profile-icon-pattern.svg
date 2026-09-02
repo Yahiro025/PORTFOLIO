@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+    <rect width="128" height="128" fill="#000"/>
+    <g fill="#fff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="700">
+        <text x="8" y="34" font-size="26">&lt;/&gt;</text>
+        <text x="70" y="30" font-size="22">{ }</text>
+        <text x="14" y="90" font-size="22">=&gt;</text>
+        <text x="76" y="100" font-size="30">;</text>
+        <text x="50" y="64" font-size="18">01</text>
+    </g>
+</svg>

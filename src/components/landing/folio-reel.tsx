@@ -878,7 +878,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         if (hoveredTitleIdxRef.current === i) hoveredTitleIdxRef.current = null
                                     }}
                                     className={cn(
-                                        'flex cursor-pointer items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-foreground/40',
+                                        'cursor-target flex cursor-pointer items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-foreground/40',
                                         isMobile ? 'justify-center px-6 text-center' : 'gap-4 pl-8 pr-8 sm:pl-12 lg:pl-20'
                                     )}
                                     style={{ height: `${layout.titleSlotVh}dvh` }}
@@ -987,7 +987,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                             data-detail-reveal
                             type='button'
                             onClick={handleClose}
-                            className='group inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
+                            className='cursor-target group inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
                         >
                             <ArrowLeft className='size-4 transition-transform group-hover:-translate-x-0.5' />
                             Back to work
@@ -1008,6 +1008,29 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         ))}
                                     </div>
 
+                                    {(it.role || it.team || it.result) && (
+                                        <div className='grid grid-cols-2 gap-x-6 gap-y-3 pt-3 sm:grid-cols-3'>
+                                            {it.role && (
+                                                <div className='flex flex-col gap-1'>
+                                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/65'>Role</span>
+                                                    <span className='text-sm text-foreground'>{it.role}</span>
+                                                </div>
+                                            )}
+                                            {it.team && (
+                                                <div className='flex flex-col gap-1'>
+                                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/65'>Team</span>
+                                                    <span className='text-sm text-foreground'>{it.team}</span>
+                                                </div>
+                                            )}
+                                            {it.result && (
+                                                <div className='flex flex-col gap-1'>
+                                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/65'>Result</span>
+                                                    <span className='text-sm text-foreground'>{it.result}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className='flex flex-wrap items-center gap-3 pt-2'>
                                         <Button render={<a href={it.sourceUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                             Source code
@@ -1026,7 +1049,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                             {it.kind === 'about' && (
                                 <div className='flex flex-col gap-3 border-t border-border pt-4'>
-                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Focus areas</span>
+                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/65'>Focus areas</span>
                                     <div className='flex flex-wrap gap-2'>
                                         {it.focus.map((f) => (
                                             <Badge key={f} variant='chip'>{f}</Badge>
@@ -1042,12 +1065,29 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         <span className='text-sm font-medium text-foreground'>{it.school}</span>
                                         <span className='text-sm text-muted-foreground'>{it.program} · {it.status}</span>
                                     </div>
-                                    <div className='flex flex-wrap gap-3 pt-2'>
+
+                                    {it.highSchools.map(hs => (
+                                        <div key={hs.name} className='flex flex-col gap-1'>
+                                            <span className='text-sm font-medium text-foreground'>{hs.name}</span>
+                                            <span className='text-sm text-muted-foreground'>{hs.level}</span>
+                                        </div>
+                                    ))}
+
+                                    <div className='flex flex-col gap-2 pt-1'>
+                                        <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/65'>Current focus</span>
+                                        <div className='flex flex-wrap gap-2'>
+                                            {it.focus.map(f => (
+                                                <Badge key={f} variant='chip'>{f}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className='flex flex-wrap items-center gap-3 pt-2'>
                                         <Button render={<a href={it.pdfUrl} download />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                             Download resume
                                         </Button>
-                                        <Button render={<a href={it.sourceUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='pillOutline' size='pill' className='transition-transform hover:-translate-y-0.5'>
-                                            Reviewed source
+                                        <Button render={<a href={it.pdfUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='pillOutline' size='pill' className='transition-transform hover:-translate-y-0.5'>
+                                            View resume
                                             <ArrowUpRight className='size-3.5' />
                                         </Button>
                                     </div>
@@ -1115,11 +1155,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             {it.title}
                                         </h2>
 
-                                        <span data-detail-reveal className='font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground'>
+                                        <span data-detail-reveal className='font-mono text-xs uppercase tracking-[0.2em] text-foreground/65'>
                                             {it.meta}
                                         </span>
 
-                                        <p data-detail-reveal className='text-base leading-relaxed text-muted-foreground'>
+                                        <p data-detail-reveal className='text-base leading-relaxed text-foreground/85'>
                                             {it.summary}
                                         </p>
 
@@ -1166,11 +1206,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             {it.title}
                                         </h2>
 
-                                        <span data-detail-reveal className='mt-3 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground'>
+                                        <span data-detail-reveal className='mt-3 font-mono text-xs uppercase tracking-[0.2em] text-foreground/65'>
                                             {it.meta}
                                         </span>
 
-                                        <p data-detail-reveal className='mt-6 max-w-xl text-base leading-relaxed text-muted-foreground'>
+                                        <p data-detail-reveal className='mt-6 max-w-xl text-base leading-relaxed text-foreground/85'>
                                             {it.summary}
                                         </p>
 
@@ -1181,7 +1221,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         data-no-wheel
                                         onClick={(e) => e.stopPropagation()}
                                         className='absolute'
-                                        style={{ top: '30px', right: '30px', bottom: '30px', width: 'calc((100dvh - 60px) * 0.8)' }}
+                                        style={{ top: '30px', right: '30px', bottom: '30px', width: 'min(calc((100dvh - 60px) * 0.8), calc(45vw - 30px))' }}
                                     >
                                         <div
                                             ref={detailImageRef}
@@ -1203,7 +1243,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             type='button'
                                             onClick={handleClose}
                                             aria-label='Close'
-                                            className='absolute -right-2 -top-2 grid h-10 w-10 place-items-center rounded-full bg-foreground text-background shadow-lg transition-transform hover:scale-105'
+                                            className='cursor-target absolute -right-2 -top-2 grid h-10 w-10 place-items-center rounded-full bg-foreground text-background shadow-lg transition-transform hover:scale-105'
                                         >
                                             <X className='size-4' />
                                         </button>
