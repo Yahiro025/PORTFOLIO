@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
         ignoreBuildErrors: true
     },
     productionBrowserSourceMaps: false,
+    turbopack: {
+        root: __dirname
+    },
     experimental: {
         optimizePackageImports: ['lucide-react'],
         cpus: 1,

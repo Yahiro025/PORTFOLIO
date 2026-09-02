@@ -18,6 +18,29 @@ export interface MotionPolicy {
     sharedElementDuration: number
 }
 
+export type PortfolioGroup = 'work' | 'profile'
+
+export const TITLE_REGISTER = {
+    work: { scale: 1, wghtMin: 420, wghtMax: 620 },
+    profile: { scale: 0.6, wghtMin: 380, wghtMax: 480 }
+} as const
+
+export const getGroup = (item: Pick<PortfolioItem, 'kind'>): PortfolioGroup => item.kind === 'project' ? 'work' : 'profile'
+
+export const getGroupPosition = (
+    items: Pick<PortfolioItem, 'kind'>[],
+    activeIndex: number
+) => {
+    const group = getGroup(items[activeIndex])
+    const grouped = items.filter(item => getGroup(item) === group)
+
+    return {
+        group,
+        index: grouped.indexOf(items[activeIndex]) + 1,
+        total: grouped.length
+    }
+}
+
 export const getReelOffsets = (
     position: number,
     layout: FolioLayout,
@@ -69,8 +92,11 @@ export const validatePortfolioItems = (items: PortfolioItem[]): PortfolioItem[] 
         if (item.kind === 'project' && item.liveUrl && new URL(item.liveUrl).protocol !== 'https:') {
             throw new Error(`Live URL must use HTTPS: ${item.id}`)
         }
+
+        if (item.kind === 'resume' && !item.pdfUrl) {
+            throw new Error(`Resume PDF URL is required: ${item.id}`)
+        }
     }
 
     return items
 }
-

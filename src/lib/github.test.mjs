@@ -39,6 +39,15 @@ const successFetch = async input => {
                 fork: false,
                 archived: true,
                 pushed_at: '2025-01-01T00:00:00Z'
+            },
+            {
+                name: 'forked-example',
+                html_url: 'https://github.com/Yahiro025/forked-example',
+                homepage: null,
+                language: 'TypeScript',
+                fork: true,
+                archived: false,
+                pushed_at: '2026-06-01T00:00:00Z'
             }
         ])
     }

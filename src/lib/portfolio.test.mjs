@@ -2,10 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+    getGroup,
+    getGroupPosition,
     getMotionPolicy,
     getPreviewPresentation,
     getReelOffsets,
     reduceInteraction,
+    TITLE_REGISTER,
     validatePortfolioItems
 } from './portfolio.ts'
 
@@ -36,7 +39,6 @@ const project = {
     summary: 'A scholarship application built as a student project.',
     owner: 'Yahiro025',
     repo: 'ScholarAid',
-    relationship: 'owner',
     sourceUrl: 'https://github.com/Yahiro025/ScholarAid',
     liveUrl: 'https://scholar-aid-rho.vercel.app',
     embed: true,
@@ -142,5 +144,50 @@ test('live project URLs must use HTTPS', () => {
     assert.throws(
         () => validatePortfolioItems([unsafe]),
         new Error('Live URL must use HTTPS: unsafe')
+    )
+})
+
+test('portfolio items map to Work and Profile groups', () => {
+    assert.equal(getGroup(project), 'work')
+
+    for (const kind of ['about', 'resume', 'github']) {
+        assert.equal(getGroup({ kind }), 'profile')
+    }
+})
+
+test('group position is one-based within the active group', () => {
+    const items = [
+        project,
+        { ...project, id: 'bantayog' },
+        { kind: 'about' },
+        { kind: 'resume' },
+        { kind: 'github' }
+    ]
+
+    assert.deepEqual(getGroupPosition(items, 0), { group: 'work', index: 1, total: 2 })
+    assert.deepEqual(getGroupPosition(items, 2), { group: 'profile', index: 1, total: 3 })
+    assert.deepEqual(getGroupPosition(items, 4), { group: 'profile', index: 3, total: 3 })
+})
+
+test('title registers use the approved type scale and weight ranges', () => {
+    assert.deepEqual(TITLE_REGISTER.work, { scale: 1, wghtMin: 420, wghtMax: 620 })
+    assert.deepEqual(TITLE_REGISTER.profile, { scale: 0.6, wghtMin: 380, wghtMax: 480 })
+})
+
+test('resume items require a PDF URL', () => {
+    assert.throws(
+        () => validatePortfolioItems([{
+            id: 'resume',
+            kind: 'resume',
+            title: 'Resume',
+            year: '2026',
+            meta: 'Current',
+            summary: 'Resume',
+            school: 'PUP',
+            program: 'BSCS',
+            status: 'Second year',
+            sourceUrl: 'https://github.com/Yahiro025/My-Resume'
+        }]),
+        new Error('Resume PDF URL is required: resume')
     )
 })

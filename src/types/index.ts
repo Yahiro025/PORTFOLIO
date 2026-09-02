@@ -43,6 +43,7 @@ export interface FolioLayout {
 interface PortfolioItemBase {
     id: string
     title: string
+    descriptor?: string
     year: string
     meta: string
     summary: string
@@ -52,7 +53,6 @@ export interface ProjectItem extends PortfolioItemBase {
     kind: 'project'
     owner: string
     repo: string
-    relationship: 'owner' | 'fork'
     sourceUrl: string
     liveUrl?: string
     embed: boolean
@@ -71,6 +71,7 @@ export interface ResumeItem extends PortfolioItemBase {
     program: string
     status: string
     sourceUrl: string
+    pdfUrl: string
 }
 
 export interface GitHubItem extends PortfolioItemBase {
@@ -86,7 +87,6 @@ export interface GitHubRepoSummary {
     url: string
     homepage: string | null
     language: string | null
-    fork: boolean
     pushedAt: string
 }
 

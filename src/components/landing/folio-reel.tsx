@@ -12,6 +12,8 @@ import {
 
 import { cn } from '@/lib/utils'
 
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
     DESKTOP_LAYOUT,
     MOBILE_LAYOUT,
@@ -19,10 +21,13 @@ import {
 } from '@/constants/folio'
 import { FolioPreview } from '@/components/landing/folio-preview'
 import {
+    getGroup,
+    getGroupPosition,
     getMotionPolicy,
     getPreviewPresentation,
     getReelOffsets,
-    reduceInteraction
+    reduceInteraction,
+    TITLE_REGISTER
 } from '@/lib/portfolio'
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
@@ -48,6 +53,9 @@ const MASK_GRADIENT = `linear-gradient(to bottom, transparent 0, #000 ${TITLE_MA
 
 const RENDERED_ITEMS: PortfolioItem[] = Array.from({ length: RENDERED }, (_, i) => folioItems[i % N])
 
+const ABOUT_LOGICAL_IDX = folioItems.findIndex(item => item.id === 'about')
+const LANDING_POS = POS_MIN + ABOUT_LOGICAL_IDX
+
 type Phase = 'idle' | 'opening' | 'detail' | 'closing'
 
 interface FolioReelProps {
@@ -57,10 +65,9 @@ interface FolioReelProps {
 export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const [isMobile, setIsMobile] = useState(false)
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-    const [activeIdx, setActiveIdx] = useState(POS_MIN)
+    const [activeIdx, setActiveIdx] = useState(LANDING_POS)
     const [settledRenderedIdx, setSettledRenderedIdx] = useState<number | null>(null)
     const [interactingRenderedIdx, setInteractingRenderedIdx] = useState<number | null>(null)
-    const [detailInteracting, setDetailInteracting] = useState(false)
     const [phase, setPhase] = useState<Phase>('idle')
     const [detailIdx, setDetailIdx] = useState<number | null>(null)
 
@@ -70,22 +77,22 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const imageRevealRef = useRef<HTMLDivElement>(null)
     const imageStripRef = useRef<HTMLDivElement>(null)
     const clickMeRef = useRef<HTMLDivElement>(null)
+    const counterRef = useRef<HTMLSpanElement>(null)
 
     const detailRef = useRef<HTMLDivElement>(null)
     const detailImageRef = useRef<HTMLDivElement>(null)
     const detailTitleRef = useRef<HTMLHeadingElement>(null)
 
     const titleRefs = useRef<(HTMLDivElement | null)[]>([])
-    const subtitleRefs = useRef<(HTMLSpanElement | null)[]>([])
     const slotRefs = useRef<(HTMLDivElement | null)[]>([])
     const titleHoverProgressRef = useRef<number[]>([])
 
     const layoutRef = useRef(DESKTOP_LAYOUT)
     const isMobileRef = useRef(false)
 
-    const targetPosRef = useRef(POS_MIN)
-    const posRef = useRef(POS_MIN)
-    const activeIdxRef = useRef(POS_MIN)
+    const targetPosRef = useRef(LANDING_POS)
+    const posRef = useRef(LANDING_POS)
+    const activeIdxRef = useRef(LANDING_POS)
 
     const detailOpenRef = useRef(false)
     const interactingRef = useRef(false)
@@ -93,7 +100,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const entranceDoneRef = useRef(false)
 
     const lastWheelTimeRef = useRef(0)
-    const navProxyRef = useRef({ value: POS_MIN })
+    const navProxyRef = useRef({ value: LANDING_POS })
     const hoverRef = useRef({ x: 0, y: 0 })
     const cursorRenderRef = useRef({ x: 0, y: 0 })
     const isHoveringActiveRef = useRef(false)
@@ -112,6 +119,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const layout = isMobile ? MOBILE_LAYOUT : DESKTOP_LAYOUT
     const detailItem = detailIdx !== null ? folioItems[detailIdx] : null
     const motionPolicy = getMotionPolicy(prefersReducedMotion)
+    const activeGroupPosition = getGroupPosition(folioItems, activeIdx % N)
 
     useEffect(() => {
         const mq = window.matchMedia('(max-width: 767px)')
@@ -145,6 +153,14 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     useEffect(() => {
         interactingRef.current = interactingRenderedIdx !== null
     }, [interactingRenderedIdx])
+
+    useEffect(() => {
+        const counter = counterRef.current
+
+        if (!counter || motionPolicy.sharedElementDuration === 0) return
+
+        gsap.fromTo(counter, { y: 6, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
+    }, [activeGroupPosition.group, motionPolicy.sharedElementDuration])
 
     // Settled index tracker: 300ms after active index changes
     useEffect(() => {
@@ -205,13 +221,13 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 )
             }
 
-            const entranceProxy = { value: POS_MIN }
-            const cycleDistance = Math.floor(1.4 * N) + Math.floor(Math.random() * N)
+            const entranceProxy = { value: LANDING_POS }
+            const cycleDistance = N * (1 + Math.floor(Math.random() * 2))
 
             tl.to(
                 entranceProxy,
                 {
-                    value: POS_MIN + cycleDistance,
+                    value: LANDING_POS + cycleDistance,
                     duration: 1.7,
                     ease: 'power4.out',
                     onUpdate: () => {
@@ -343,7 +359,8 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 if (!el) continue
 
                 const dist = Math.abs(i - next)
-                const tColor = Math.max(0, 1 - dist * 2)
+                const reg = TITLE_REGISTER[getGroup(RENDERED_ITEMS[i])]
+                const tColor = Math.min(Math.max(0, 1 - dist * 2), reg.scale === 1 ? 1 : 0.6)
                 const tType = Math.max(0, 1 - dist * 0.55)
 
                 const targetHover = hoveredIdx !== null && i % N === hoveredIdx % N ? 1 : 0
@@ -355,7 +372,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 el.style.color = `color-mix(in srgb, var(--foreground) ${(tColor * 100).toFixed(1)}%, var(--muted-foreground))`
                 el.style.opacity = (NONACTIVE_OPACITY + (1 - NONACTIVE_OPACITY) * tColor).toFixed(3)
 
-                const wght = 420 + 200 * tType + nextHover * HOVER_WGHT_BONUS
+                const wght = reg.wghtMin + (reg.wghtMax - reg.wghtMin) * tType + nextHover * HOVER_WGHT_BONUS
 
                 el.style.fontVariationSettings = `"wght" ${wght.toFixed(0)}`
                 el.style.fontWeight = String(Math.round(wght))
@@ -363,21 +380,9 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 const h3 = el.querySelector('h3') as HTMLElement | null
 
                 if (h3) {
-                    const fontVh = L.titleFontVhMin + (L.titleFontVhMax - L.titleFontVhMin) * tType
+                    const fontVh = (L.titleFontVhMin + (L.titleFontVhMax - L.titleFontVhMin) * tType) * reg.scale
                     h3.style.fontSize = `${fontVh.toFixed(2)}dvh`
                 }
-            }
-
-            for (let i = 0; i < RENDERED; i++) {
-                const el = subtitleRefs.current[i]
-
-                if (!el) continue
-
-                const dist = Math.abs(i - next)
-                const t = Math.max(0, 1 - dist * 2.8)
-
-                el.style.opacity = t.toFixed(3)
-                el.style.transform = `translateX(${((1 - t) * -10).toFixed(2)}px)`
             }
 
             const rounded = Math.max(0, Math.min(RENDERED - 1, Math.round(next)))
@@ -628,7 +633,6 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         sourceImageRectRef.current = null
         sourceTitleRectRef.current = null
         setDetailIdx(null)
-        setDetailInteracting(false)
         setPhase('idle')
     }
 
@@ -807,17 +811,31 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             aria-label='Selected work'
             className='relative h-[100dvh] w-full select-none overflow-hidden bg-background'
         >
+            {isMobile && <div aria-hidden className='absolute inset-x-0 top-0 z-[9] h-20 bg-background' />}
+
             <div
                 data-chrome
-                className='pointer-events-none absolute right-6 top-7 z-10 flex items-center gap-3 opacity-0 md:right-12 md:top-10'
+                data-no-wheel
+                className={cn(
+                    'absolute left-6 top-5 z-10 opacity-0 md:left-12 md:top-10',
+                    isMobile && 'flex items-center gap-4'
+                )}
             >
-                <span className='font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground tabular-nums'>
-                    {String((activeIdx % N) + 1).padStart(2, '0')}
+                <button type='button' onClick={() => navigateAndOpen(POS_MIN + folioItems.findIndex(item => item.id === 'about'))} className='text-sm font-semibold text-foreground'>Bennett Payoyo</button>
+                {!isMobile && <p className='mt-1 text-xs text-muted-foreground'>2nd year BSCS · PUP</p>}
+            </div>
+
+            <div
+                data-chrome
+                className='pointer-events-none absolute right-6 top-14 z-10 flex items-center gap-3 opacity-0 md:right-12 md:top-10'
+            >
+                <span ref={counterRef} className='font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground tabular-nums'>
+                    {activeGroupPosition.group === 'work' ? 'Work' : 'Profile'} {String(activeGroupPosition.index).padStart(2, '0')}
                     <span className='mx-1.5 opacity-40'>/</span>
-                    {String(N).padStart(2, '0')}
+                    {String(activeGroupPosition.total).padStart(2, '0')}
                 </span>
 
-                <span className='h-px w-8 bg-foreground/30' />
+                <span className='hidden h-px w-8 bg-foreground/30 md:block' />
             </div>
 
             <div
@@ -833,6 +851,8 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                     <div ref={titleStripRef} className='absolute inset-x-0 top-0 will-change-transform'>
                         {RENDERED_ITEMS.map((item, i) => {
                             const isCanonical = i >= N && i < 2 * N
+                            const groupPosition = getGroupPosition(folioItems, i % N)
+                            const profile = groupPosition.group === 'profile'
 
                             return (
                                 <div
@@ -863,16 +883,18 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     )}
                                     style={{ height: `${layout.titleSlotVh}dvh` }}
                                 >
-                                    <h3 className='whitespace-nowrap leading-none tracking-[-0.015em]'>{item.title}</h3>
-
-                                    <span
-                                        ref={(el) => {
-                                            subtitleRefs.current[i] = el
-                                        }}
-                                        className='hidden whitespace-nowrap text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:inline'
-                                    >
-                                        {item.meta}
-                                    </span>
+                                    <div className={cn(profile && 'flex flex-col gap-1')}>
+                                        {profile && <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Profile · {String(groupPosition.index).padStart(2, '0')}</span>}
+                                        <h3 className='whitespace-nowrap leading-none tracking-[-0.015em]'>
+                                            {item.title}
+                                            {item.descriptor && (
+                                                <span className='hidden 2xl:inline'>
+                                                    <span className='mx-[0.35em] text-[0.7em]'>·</span>
+                                                    <span className='text-[0.7em]'>{item.descriptor}</span>
+                                                </span>
+                                            )}
+                                        </h3>
+                                    </div>
                                 </div>
                             )
                         })}
@@ -973,7 +995,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                     )
 
                     const detailPresentation = it.kind === 'project'
-                        ? (it.embed && it.liveUrl ? (detailInteracting ? 'live-interactive' : 'live-passive') : 'poster')
+                        ? (it.embed && it.liveUrl ? 'live-interactive' : 'poster')
                         : it.kind
 
                     const detailContent = (
@@ -981,96 +1003,71 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                             {it.kind === 'project' && (
                                 <>
                                     <div className='flex flex-wrap items-center gap-2'>
-                                        <span className='rounded-full border border-border px-3 py-1 text-xs font-mono uppercase tracking-[0.14em] text-muted-foreground'>
-                                            {it.relationship === 'owner' ? 'Owner / Author' : 'Fork / Contribution'}
-                                        </span>
                                         {it.stack.map((tech) => (
-                                            <span
-                                                key={tech}
-                                                className='rounded-full border border-border px-3 py-1 text-xs font-mono uppercase tracking-[0.14em] text-muted-foreground'
-                                            >
-                                                {tech}
-                                            </span>
+                                            <Badge key={tech} variant='chipMono'>{tech}</Badge>
                                         ))}
                                     </div>
 
                                     <div className='flex flex-wrap items-center gap-3 pt-2'>
-                                        <a
-                                            href={it.sourceUrl}
-                                            target='_blank'
-                                            rel='noreferrer'
-                                            className='inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background transition-transform hover:-translate-y-0.5'
-                                        >
+                                        <Button render={<a href={it.sourceUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                             Source code
                                             <ArrowUpRight className='size-3.5' />
-                                        </a>
+                                        </Button>
 
                                         {it.liveUrl && (
-                                            <a
-                                                href={it.liveUrl}
-                                                target='_blank'
-                                                rel='noreferrer'
-                                                className='inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-medium text-foreground transition-transform hover:-translate-y-0.5'
-                                            >
+                                            <Button render={<a href={it.liveUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='pillOutline' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                                 Open live site
                                                 <ArrowUpRight className='size-3.5' />
-                                            </a>
+                                            </Button>
                                         )}
                                     </div>
                                 </>
                             )}
 
                             {it.kind === 'about' && (
-                                <div className='flex flex-col gap-3'>
-                                    <span className='text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Focus areas</span>
+                                <div className='flex flex-col gap-3 border-t border-border pt-4'>
+                                    <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Focus areas</span>
                                     <div className='flex flex-wrap gap-2'>
                                         {it.focus.map((f) => (
-                                            <span
-                                                key={f}
-                                                className='rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground'
-                                            >
-                                                {f}
-                                            </span>
+                                            <Badge key={f} variant='chip'>{f}</Badge>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
                             {it.kind === 'resume' && (
-                                <div className='flex flex-col gap-3'>
+                                <div className='flex flex-col gap-3 border-t border-border pt-4'>
                                     <div className='flex flex-col gap-1'>
-                                        <span className='text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Education</span>
+                                        <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Education</span>
                                         <span className='text-sm font-medium text-foreground'>{it.school}</span>
                                         <span className='text-sm text-muted-foreground'>{it.program} · {it.status}</span>
                                     </div>
-                                    <div className='pt-2'>
-                                        <a
-                                            href={it.sourceUrl}
-                                            target='_blank'
-                                            rel='noreferrer'
-                                            className='inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background transition-transform hover:-translate-y-0.5'
-                                        >
+                                    <div className='flex flex-wrap gap-3 pt-2'>
+                                        <Button render={<a href={it.pdfUrl} download />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
+                                            Download resume
+                                        </Button>
+                                        <Button render={<a href={it.sourceUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='pillOutline' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                             Reviewed source
                                             <ArrowUpRight className='size-3.5' />
-                                        </a>
+                                        </Button>
                                     </div>
                                 </div>
                             )}
 
                             {it.kind === 'github' && (
-                                <div className='flex flex-col gap-3'>
+                                <div className='flex flex-col gap-3 border-t border-border pt-4'>
                                     {github ? (
                                         <>
                                             <p className='text-sm text-muted-foreground'>
                                                 {github.publicRepos} public repositories · updated {github.fetchedAt.slice(0, 10)}
                                             </p>
-                                            <ul className='space-y-2 text-sm text-foreground'>
+                                            <ul className='space-y-2 text-foreground'>
                                                 {github.repos.slice(0, 6).map((repo) => (
-                                                    <li key={repo.url} className='flex items-center justify-between'>
+                                                    <li key={repo.url} className='grid grid-cols-[1fr_auto] gap-x-6 font-mono text-xs'>
                                                         <a href={repo.url} target='_blank' rel='noreferrer' className='hover:underline'>
                                                             {repo.name}
                                                         </a>
-                                                        <span className='text-xs text-muted-foreground'>{repo.language ?? (repo.fork ? 'Fork' : '')}</span>
+                                                        <span className='text-xs text-muted-foreground'>{repo.language ?? ''}</span>
                                                     </li>
                                                 ))}
                                             </ul>
@@ -1079,15 +1076,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         <p className='text-sm text-muted-foreground'>GitHub data is temporarily unavailable.</p>
                                     )}
                                     <div className='pt-2'>
-                                        <a
-                                            href={it.profileUrl}
-                                            target='_blank'
-                                            rel='noreferrer'
-                                            className='inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background transition-transform hover:-translate-y-0.5'
-                                        >
+                                        <Button render={<a href={it.profileUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
                                             Open GitHub profile
                                             <ArrowUpRight className='size-3.5' />
-                                        </a>
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -1143,8 +1135,8 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                                 presentation={detailPresentation}
                                                 github={github}
                                                 mode='detail'
-                                                onInteract={() => setDetailInteracting(true)}
-                                                onExitInteract={() => setDetailInteracting(false)}
+                                                onInteract={() => {}}
+                                                onExitInteract={() => {}}
                                                 onOpenDetails={() => {}}
                                             />
                                         </div>
@@ -1201,8 +1193,8 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                                 presentation={detailPresentation}
                                                 github={github}
                                                 mode='detail'
-                                                onInteract={() => setDetailInteracting(true)}
-                                                onExitInteract={() => setDetailInteracting(false)}
+                                                onInteract={() => {}}
+                                                onExitInteract={() => {}}
                                                 onOpenDetails={() => {}}
                                             />
                                         </div>

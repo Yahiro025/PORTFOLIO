@@ -25,7 +25,7 @@ const normalizeGitHubSnapshot = (
     const repos: GitHubRepoSummary[] = Array.isArray(reposValue)
         ? reposValue
             .filter(isRecord)
-            .filter(repo => repo.archived === false)
+            .filter(repo => repo.archived === false && repo.fork !== true)
             .flatMap(repo => {
                 const name = stringField(repo, 'name')
                 const url = stringField(repo, 'html_url')
@@ -38,7 +38,6 @@ const normalizeGitHubSnapshot = (
                     url,
                     homepage: stringField(repo, 'homepage'),
                     language: stringField(repo, 'language'),
-                    fork: repo.fork === true,
                     pushedAt
                 }]
             })
