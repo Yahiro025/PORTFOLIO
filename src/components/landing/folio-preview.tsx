@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ContactLanyard } from '@/components/landing/contact-lanyard'
 
 const ResumePdf = dynamic(
     () => import('@/components/landing/resume-pdf').then(module => module.ResumePdf),
@@ -54,6 +55,8 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     onOpenDetails
 }): ReactNode => {
     const stop = (event: MouseEvent<HTMLElement>) => event.stopPropagation()
+
+    const [contactOpen, setContactOpen] = useState(false)
 
     const iframeWrapRef = useRef<HTMLDivElement>(null)
     const [iframeWrapSize, setIframeWrapSize] = useState({ width: 0, height: 0 })
@@ -234,8 +237,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                             enableTilt
                             enableMobileTilt={false}
                             behindGlowEnabled
-                            onContactClick={() => { window.location.href = 'mailto:bennettpayoyo3.14@gmail.com' }}
+                            onContactClick={() => setContactOpen(true)}
                         />
+                        <ContactLanyard open={contactOpen} onOpenChange={setContactOpen} />
                     </div>
                 ) : (
                     <Avatar className='h-[59%] w-full shrink-0 rounded-none after:hidden'>
