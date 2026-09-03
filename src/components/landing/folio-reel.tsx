@@ -38,6 +38,13 @@ const RENDERED = LOOP_COPIES * N
 const POS_MIN = N
 const POS_MAX = 2 * N
 
+// How many slots on either side of the active one get their iframe mounted
+// (hidden) ahead of time. The static poster screenshot (FolioPreview's
+// posterUrl) is what makes every project look already loaded at a glance;
+// this radius just pre-warms the real iframe so the swap to live is
+// seamless once a slot settles as active.
+const PRELOAD_RADIUS = 1
+
 const SMOOTHING = 0.14
 const WHEEL_CAP = 200
 const SNAP_IDLE_MS = 90
@@ -957,6 +964,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             presentation={presentation}
                                             github={github}
                                             mode='reel'
+                                            preload={Math.abs(i - activeIdx) <= PRELOAD_RADIUS}
                                             onInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'enter', renderedIndex: i }))}
                                             onExitInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'exit' }))}
                                             onOpenDetails={() => navigateAndOpen(i)}
@@ -1096,31 +1104,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                             {it.kind === 'github' && (
                                 <div className='flex flex-col gap-3 border-t border-border pt-4'>
-                                    {github ? (
-                                        <>
-                                            <p className='text-sm text-muted-foreground'>
-                                                {github.publicRepos} public repositories · updated {github.fetchedAt.slice(0, 10)}
-                                            </p>
-                                            <ul className='space-y-2 text-foreground'>
-                                                {github.repos.slice(0, 6).map((repo) => (
-                                                    <li key={repo.url} className='grid grid-cols-[1fr_auto] gap-x-6 font-mono text-xs'>
-                                                        <a href={repo.url} target='_blank' rel='noreferrer' className='hover:underline'>
-                                                            {repo.name}
-                                                        </a>
-                                                        <span className='text-xs text-muted-foreground'>{repo.language ?? ''}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </>
-                                    ) : (
-                                        <p className='text-sm text-muted-foreground'>GitHub data is temporarily unavailable.</p>
-                                    )}
-                                    <div className='pt-2'>
-                                        <Button render={<a href={it.profileUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='solid' size='pill' className='transition-transform hover:-translate-y-0.5'>
-                                            Open GitHub profile
-                                            <ArrowUpRight className='size-3.5' />
-                                        </Button>
-                                    </div>
+                                    <Button render={<a href={it.profileUrl} target='_blank' rel='noreferrer' />} nativeButton={false} variant='solid' size='pill' className='w-fit transition-transform hover:-translate-y-0.5'>
+                                        Open GitHub profile
+                                        <ArrowUpRight className='size-3.5' />
+                                    </Button>
                                 </div>
                             )}
                         </div>

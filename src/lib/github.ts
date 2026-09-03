@@ -9,6 +9,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const stringField = (record: Record<string, unknown>, key: string) =>
     typeof record[key] === 'string' ? record[key] : null
 
+const numberField = (record: Record<string, unknown>, key: string) =>
+    typeof record[key] === 'number' ? record[key] : 0
+
 const normalizeGitHubSnapshot = (
     profileValue: unknown,
     reposValue: unknown,
@@ -38,6 +41,8 @@ const normalizeGitHubSnapshot = (
                     url,
                     homepage: stringField(repo, 'homepage'),
                     language: stringField(repo, 'language'),
+                    description: stringField(repo, 'description'),
+                    stars: numberField(repo, 'stargazers_count'),
                     pushedAt
                 }]
             })
@@ -84,6 +89,9 @@ const normalizeGitHubSnapshot = (
         login,
         name: stringField(profileValue, 'name') ?? login,
         avatarUrl,
+        bio: stringField(profileValue, 'bio'),
+        followers: numberField(profileValue, 'followers'),
+        following: numberField(profileValue, 'following'),
         publicRepos: typeof profileValue.public_repos === 'number'
             ? profileValue.public_repos
             : repos.length,

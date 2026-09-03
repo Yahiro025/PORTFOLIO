@@ -21,6 +21,15 @@ const ProfileCard = dynamic(
     { ssr: false }
 )
 
+const LANGUAGE_DOT_COLOR: Record<string, string> = {
+    TypeScript: '#3178c6',
+    JavaScript: '#f1e05a',
+    Python: '#3572A5',
+    HTML: '#e34c26',
+    CSS: '#563d7c',
+    Shell: '#89e051'
+}
+
 const IFRAME_DESKTOP_WIDTH = 1440
 const IFRAME_ZOOM_OUT = 0.85
 
@@ -40,6 +49,7 @@ interface FolioPreviewProps {
     presentation: PreviewPresentation
     github: GitHubSnapshot | null
     mode: 'reel' | 'detail'
+    preload?: boolean
     onInteract: () => void
     onExitInteract: () => void
     onOpenDetails: () => void
@@ -50,6 +60,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     presentation,
     github,
     mode,
+    preload = false,
     onInteract,
     onExitInteract,
     onOpenDetails
@@ -60,6 +71,12 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
 
     const iframeWrapRef = useRef<HTMLDivElement>(null)
     const [iframeWrapSize, setIframeWrapSize] = useState({ width: 0, height: 0 })
+
+    // Once a live iframe has loaded, keep it mounted for the life of this
+    // slot and just hide it behind the poster instead of unmounting —
+    // unmounting forces a full reload (fresh handshake + app boot) every
+    // time the reel scrolls back to a previously-viewed project.
+    const hasBeenLiveRef = useRef(false)
 
     useEffect(() => {
         const el = iframeWrapRef.current
@@ -106,6 +123,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     if (item.kind === 'project') {
         const live = presentation === 'live-passive' || presentation === 'live-interactive'
         const interactive = presentation === 'live-interactive'
+
+        if (live || preload) hasBeenLiveRef.current = true
+        const mountIframe = hasBeenLiveRef.current && !!item.liveUrl
 
         return (
             <div data-preview-mode={mode} className='flex h-full w-full flex-col overflow-hidden bg-muted'>
@@ -160,7 +180,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                 )}
 
                 <div ref={iframeWrapRef} className='relative min-h-0 flex-1 overflow-hidden'>
-                    {live && item.liveUrl ? (
+                    {mountIframe && (
                         useDesktopScale ? (
                             <iframe
                                 src={item.liveUrl}
@@ -180,7 +200,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                     transform: DESKTOP_SCALE_IFRAME[item.id].align === 'center'
                                         ? `translate(-50%, -50%) scale(${iframeScale})`
                                         : `translateX(-50%) scale(${iframeScale})`,
-                                    visibility: iframeScale ? 'visible' : 'hidden',
+                                    visibility: live && iframeScale ? 'visible' : 'hidden',
                                     pointerEvents: interactive ? 'auto' : 'none'
                                 }}
                             />
@@ -191,13 +211,32 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                 loading='lazy'
                                 referrerPolicy='strict-origin-when-cross-origin'
                                 scrolling={interactive ? 'yes' : 'no'}
-                                className='h-full w-full border-0 bg-background'
-                                style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+                                className='absolute inset-0 h-full w-full border-0 bg-background'
+                                style={{
+                                    visibility: live ? 'visible' : 'hidden',
+                                    pointerEvents: interactive ? 'auto' : 'none'
+                                }}
                             />
                         )
-                    ) : (
-                        <div className='flex h-full flex-col bg-foreground p-6 text-background'>
-                            <div className='mt-auto mb-14 min-h-0'>
+                    )}
+
+                    {!live && (
+                        <div className='absolute inset-0 flex h-full flex-col bg-foreground text-background'>
+                            {item.posterUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={item.posterUrl}
+                                    alt=''
+                                    aria-hidden
+                                    className='absolute inset-0 h-full w-full object-cover object-top'
+                                />
+                            )}
+                            <div
+                                className={cn(
+                                    'relative mt-auto min-h-0 p-6',
+                                    item.posterUrl && 'bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-16'
+                                )}
+                            >
                                 <h4 className='text-3xl font-semibold tracking-tight'>{item.title}</h4>
                                 {item.descriptor && <p className='mt-2 text-sm text-background/70'>{item.descriptor}</p>}
                                 <span className='mt-4 block font-mono text-[10px] uppercase tracking-[0.22em] text-background/70'>{item.meta}</span>
@@ -294,29 +333,68 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
         )
     }
 
+    const repoCount = mode === 'detail' ? 6 : 4
+
     return (
-        <div data-preview-mode={mode} className='flex h-full flex-col bg-background p-6'>
-            <span className='font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground'>{item.meta}</span>
-            <h4 className='mt-5 text-3xl font-semibold tracking-tight text-foreground'>@{item.login}</h4>
+        <div data-preview-mode={mode} className='flex h-full flex-col overflow-y-auto bg-background p-6'>
             {github ? (
                 <>
-                    <p className='mt-2 text-sm text-muted-foreground'>{github.publicRepos} public repositories · updated {github.fetchedAt.slice(0, 10)}</p>
-                    <ul className='mt-6 space-y-2 text-foreground'>
-                        {github.repos.slice(0, 6).map(repo => (
-                            <li key={repo.url} className='grid grid-cols-[1fr_auto] gap-x-4 font-mono text-xs'>
-                                <span>{repo.name}</span>
-                                <span className='text-muted-foreground'>{repo.language ?? ''}</span>
+                    <div className='flex items-start gap-4'>
+                        <Avatar className='size-16 shrink-0 after:hidden'>
+                            <AvatarImage src={github.avatarUrl} alt={github.name} />
+                            <AvatarFallback>{github.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className='min-w-0'>
+                            <h4 className='truncate text-xl font-semibold tracking-tight text-foreground'>{github.name}</h4>
+                            <p className='text-sm text-muted-foreground'>@{github.login}</p>
+                        </div>
+                    </div>
+
+                    {github.bio && <p className='mt-4 text-sm text-foreground'>{github.bio}</p>}
+
+                    <p className='mt-3 text-xs text-muted-foreground'>
+                        <span className='font-semibold text-foreground'>{github.followers}</span> followers
+                        <span className='mx-1.5'>·</span>
+                        <span className='font-semibold text-foreground'>{github.following}</span> following
+                        <span className='mx-1.5'>·</span>
+                        {github.publicRepos} repositories
+                    </p>
+
+                    <span className='mt-6 block font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground'>Pinned</span>
+                    <ul className={cn('mt-3 grid gap-3', mode === 'detail' && 'sm:grid-cols-2')}>
+                        {github.repos.slice(0, repoCount).map(repo => (
+                            <li key={repo.url} className='rounded-lg border border-border p-3'>
+                                <a
+                                    href={repo.url}
+                                    target='_blank'
+                                    rel='noreferrer'
+                                    onClick={stop}
+                                    className='block truncate text-sm font-semibold text-foreground hover:underline'
+                                >
+                                    {repo.name}
+                                </a>
+                                {repo.description && (
+                                    <p className='mt-1 line-clamp-2 text-xs text-muted-foreground'>{repo.description}</p>
+                                )}
+                                <div className='mt-2 flex items-center gap-4 text-xs text-muted-foreground'>
+                                    {repo.language && (
+                                        <span className='flex items-center gap-1.5'>
+                                            <span
+                                                className='size-2.5 rounded-full'
+                                                style={{ backgroundColor: LANGUAGE_DOT_COLOR[repo.language] ?? 'var(--muted-foreground)' }}
+                                            />
+                                            {repo.language}
+                                        </span>
+                                    )}
+                                    {repo.stars > 0 && <span>★ {repo.stars}</span>}
+                                </div>
                             </li>
                         ))}
-                    </ul>
-                    <ul className='mt-5 space-y-2 text-xs text-muted-foreground'>
-                        {github.commits.slice(0, 3).map(commit => <li key={commit.url}>{commit.message}</li>)}
                     </ul>
                 </>
             ) : (
                 <p className='mt-6 text-sm text-muted-foreground'>GitHub data is temporarily unavailable.</p>
             )}
-            <a href={item.profileUrl} target='_blank' rel='noreferrer' onClick={stop} className='mt-auto text-sm font-medium text-foreground hover:underline'>Open GitHub profile ↗</a>
         </div>
     )
 }

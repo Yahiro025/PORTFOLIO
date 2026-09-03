@@ -56,6 +56,7 @@ export interface ProjectItem extends PortfolioItemBase {
     sourceUrl: string
     liveUrl?: string
     embed: boolean
+    posterUrl?: string
     stack: string[]
     role?: string
     team?: string
@@ -94,6 +95,8 @@ export interface GitHubRepoSummary {
     url: string
     homepage: string | null
     language: string | null
+    description: string | null
+    stars: number
     pushedAt: string
 }
 
@@ -109,6 +112,9 @@ export interface GitHubSnapshot {
     login: string
     name: string
     avatarUrl: string
+    bio: string | null
+    followers: number
+    following: number
     publicRepos: number
     repos: GitHubRepoSummary[]
     commits: GitHubCommitSummary[]

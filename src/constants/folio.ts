@@ -15,6 +15,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         sourceUrl: 'https://github.com/alxxrzfyr/BANTAYOG',
         liveUrl: 'https://admin-bantayog.vercel.app',
         embed: true,
+        posterUrl: '/previews/bantayog.jpg',
         stack: ['Next.js', 'Hono', 'Supabase', 'Stellar', 'Gemini', 'Turborepo'],
         role: 'Backend development',
         team: '4 developers',
@@ -33,6 +34,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         sourceUrl: 'https://github.com/Yahiro025/ScholarAid',
         liveUrl: 'https://scholar-aid-rho.vercel.app',
         embed: true,
+        posterUrl: '/previews/scholaraid.jpg',
         stack: ['TypeScript']
     },
     {
@@ -48,6 +50,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         sourceUrl: 'https://github.com/Yahiro025/bicol-app',
         liveUrl: 'https://bicol-app.vercel.app/',
         embed: true,
+        posterUrl: '/previews/bikol-dictionary.jpg',
         stack: ['TypeScript']
     },
     {
@@ -63,6 +66,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         sourceUrl: 'https://github.com/Yahiro025/tanglaw',
         liveUrl: 'https://tanglaw-project.vercel.app/',
         embed: true,
+        posterUrl: '/previews/tanglaw.jpg',
         stack: ['TypeScript']
     },
     {
@@ -78,6 +82,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         sourceUrl: 'https://github.com/Yahiro025/reviewer',
         liveUrl: 'https://reviewer-peach-three.vercel.app/',
         embed: true,
+        posterUrl: '/previews/reviewer.jpg',
         stack: ['TypeScript']
     },
     {
