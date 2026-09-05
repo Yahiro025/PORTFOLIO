@@ -1,6 +1,15 @@
 import type { FolioLayout, PortfolioItem } from '@/types'
 import { validatePortfolioItems } from '@/lib/portfolio'
 
+export const PROFILE_IMAGE = {
+    src: '/profile-640.webp',
+    srcSet: '/profile-480.webp 480w, /profile-640.webp 640w, /profile-1080.webp 1080w',
+    sizes: '(max-width: 768px) 80vw, 35vw',
+    width: 640,
+    height: 853,
+    fallbackSrc: '/profile.png'
+} as const
+
 export const folioItems: PortfolioItem[] = validatePortfolioItems([
     {
         id: 'bantayog',
@@ -93,7 +102,7 @@ export const folioItems: PortfolioItem[] = validatePortfolioItems([
         year: '2026',
         meta: 'Computer Science · PUP',
         summary: "I'm Bennett Payoyo, a second-year Computer Science student at PUP. I build full-stack applications and developer tools, focusing on backend engineering, databases, and software architecture. I learn primarily by building real projects, studying the systems behind them, and using linting, build checks, and end-to-end tests to catch issues before deployment.",
-        avatarUrl: '/profile.png',
+        avatarUrl: PROFILE_IMAGE.src,
         focus: ['Full-stack Engineering', 'Backend & APIs', 'Databases', 'Architecture & Tooling'],
         tagline: 'Full-stack Software Engineering · Backend · Developer Tooling',
         currently: [

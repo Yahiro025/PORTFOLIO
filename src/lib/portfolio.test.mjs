@@ -8,6 +8,8 @@ import {
     getPreviewPresentation,
     getReelOffsets,
     reduceInteraction,
+    shouldMountProjectIframe,
+    shouldMountResumePdf,
     TITLE_REGISTER,
     validatePortfolioItems
 } from './portfolio.ts'
@@ -56,6 +58,29 @@ test('increasing reel position moves titles up and previews down', () => {
 test('only the settled rendered copy mounts a passive live preview', () => {
     assert.equal(getPreviewPresentation(project, 10, 10, 10, null), 'live-passive')
     assert.equal(getPreviewPresentation(project, 1, 10, 10, null), 'poster')
+})
+
+test('project previews stay posters while live mounting is disabled', () => {
+    assert.equal(getPreviewPresentation(project, 10, 10, 10, null, false), 'poster')
+    assert.equal(getPreviewPresentation(project, 10, 10, 10, 10, false), 'poster')
+})
+
+test('shouldMountResumePdf mounts only for settled active resume in reel mode', () => {
+    const resume = { kind: 'resume' }
+
+    assert.equal(shouldMountResumePdf(resume, 10, 10, 10, 'reel'), true)
+    assert.equal(shouldMountResumePdf(resume, 1, 10, 10, 'reel'), false)
+    assert.equal(shouldMountResumePdf(resume, 10, 10, 10, 'reel', false), false)
+    assert.equal(shouldMountResumePdf(resume, 10, 10, null, 'reel'), false)
+    assert.equal(shouldMountResumePdf(resume, 1, 10, 10, 'detail'), true)
+    assert.equal(shouldMountResumePdf(project, 10, 10, 10, 'reel'), false)
+})
+
+test('shouldMountProjectIframe mounts only for live presentation with a URL', () => {
+    assert.equal(shouldMountProjectIframe('poster', 'https://example.com'), false)
+    assert.equal(shouldMountProjectIframe('live-passive', 'https://example.com'), true)
+    assert.equal(shouldMountProjectIframe('live-interactive', 'https://example.com'), true)
+    assert.equal(shouldMountProjectIframe('live-passive', null), false)
 })
 
 test('interaction is granted only to the exact active rendered copy', () => {

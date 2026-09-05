@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 
 import { cn } from '@/lib/utils'
+import { shouldMountProjectIframe, shouldMountResumePdf } from '@/lib/portfolio'
 
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ContactLanyard } from '@/components/landing/contact-lanyard'
+import { PROFILE_IMAGE } from '@/constants/folio'
 
 const ResumePdf = dynamic(
     () => import('@/components/landing/resume-pdf').then(module => module.ResumePdf),
@@ -49,7 +51,10 @@ interface FolioPreviewProps {
     presentation: PreviewPresentation
     github: GitHubSnapshot | null
     mode: 'reel' | 'detail'
-    preload?: boolean
+    renderedIndex?: number
+    activeIndex?: number
+    settledIndex?: number | null
+    liveMountEnabled?: boolean
     onInteract: () => void
     onExitInteract: () => void
     onOpenDetails: () => void
@@ -60,7 +65,10 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     presentation,
     github,
     mode,
-    preload = false,
+    renderedIndex = 0,
+    activeIndex = 0,
+    settledIndex = null,
+    liveMountEnabled = true,
     onInteract,
     onExitInteract,
     onOpenDetails
@@ -72,11 +80,29 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     const iframeWrapRef = useRef<HTMLDivElement>(null)
     const [iframeWrapSize, setIframeWrapSize] = useState({ width: 0, height: 0 })
 
-    // Once a live iframe has loaded, keep it mounted for the life of this
-    // slot and just hide it behind the poster instead of unmounting —
-    // unmounting forces a full reload (fresh handshake + app boot) every
-    // time the reel scrolls back to a previously-viewed project.
-    const hasBeenLiveRef = useRef(false)
+    const mountProjectIframe = item.kind === 'project'
+        && shouldMountProjectIframe(presentation, item.liveUrl)
+    const projectLiveUrl = item.kind === 'project' ? item.liveUrl : null
+
+    useEffect(() => {
+        if (!mountProjectIframe || !projectLiveUrl) return
+
+        const origin = new URL(projectLiveUrl).origin
+        const selector = `link[data-preview-preconnect="${origin}"]`
+
+        if (document.querySelector(selector)) return
+
+        const link = document.createElement('link')
+        link.rel = 'preconnect'
+        link.href = origin
+        link.crossOrigin = 'anonymous'
+        link.setAttribute('data-preview-preconnect', origin)
+        document.head.appendChild(link)
+
+        return () => {
+            link.remove()
+        }
+    }, [mountProjectIframe, projectLiveUrl])
 
     useEffect(() => {
         const el = iframeWrapRef.current
@@ -121,11 +147,8 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     }
 
     if (item.kind === 'project') {
-        const live = presentation === 'live-passive' || presentation === 'live-interactive'
         const interactive = presentation === 'live-interactive'
-
-        if (live || preload) hasBeenLiveRef.current = true
-        const mountIframe = hasBeenLiveRef.current && !!item.liveUrl
+        const mountIframe = mountProjectIframe
 
         return (
             <div data-preview-mode={mode} className='flex h-full w-full flex-col overflow-hidden bg-muted'>
@@ -200,7 +223,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                     transform: DESKTOP_SCALE_IFRAME[item.id].align === 'center'
                                         ? `translate(-50%, -50%) scale(${iframeScale})`
                                         : `translateX(-50%) scale(${iframeScale})`,
-                                    visibility: live && iframeScale ? 'visible' : 'hidden',
+                                    visibility: mountIframe && iframeScale ? 'visible' : 'hidden',
                                     pointerEvents: interactive ? 'auto' : 'none'
                                 }}
                             />
@@ -213,14 +236,14 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                 scrolling={interactive ? 'yes' : 'no'}
                                 className='absolute inset-0 h-full w-full border-0 bg-background'
                                 style={{
-                                    visibility: live ? 'visible' : 'hidden',
+                                    visibility: mountIframe ? 'visible' : 'hidden',
                                     pointerEvents: interactive ? 'auto' : 'none'
                                 }}
                             />
                         )
                     )}
 
-                    {!live && (
+                    {!mountIframe && (
                         <div className='absolute inset-0 flex h-full flex-col bg-foreground text-background'>
                             {item.posterUrl && (
                                 // eslint-disable-next-line @next/next/no-img-element
@@ -281,10 +304,22 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         <ContactLanyard open={contactOpen} onOpenChange={setContactOpen} />
                     </div>
                 ) : (
-                    <Avatar className='h-[59%] w-full shrink-0 rounded-none after:hidden'>
-                        <AvatarImage src={item.avatarUrl} alt='Bennett Payoyo' className='rounded-none object-cover' />
-                        <AvatarFallback className='rounded-none text-4xl'>BP</AvatarFallback>
-                    </Avatar>
+                    <picture className='block h-[59%] w-full shrink-0'>
+                        <source
+                            type='image/webp'
+                            srcSet={PROFILE_IMAGE.srcSet}
+                            sizes={PROFILE_IMAGE.sizes}
+                        />
+                        <img
+                            src={PROFILE_IMAGE.src}
+                            alt='Bennett Payoyo'
+                            width={PROFILE_IMAGE.width}
+                            height={PROFILE_IMAGE.height}
+                            fetchPriority='high'
+                            decoding='async'
+                            className='h-full w-full object-cover'
+                        />
+                    </picture>
                 )}
                 <div className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto border-t border-border p-6', mode === 'detail' && 'justify-center')}>
                     <div>
@@ -311,6 +346,26 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     }
 
     if (item.kind === 'resume') {
+        const mountResumePdf = shouldMountResumePdf(
+            item,
+            renderedIndex,
+            activeIndex,
+            settledIndex,
+            mode,
+            liveMountEnabled
+        )
+
+        const resumePreview = mountResumePdf
+            ? <ResumePdf file={item.pdfUrl} />
+            : (
+                <div
+                    aria-hidden
+                    className='flex h-full w-full items-center justify-center bg-muted'
+                >
+                    <div className='aspect-[1/1.414] h-full max-h-full w-auto border border-border bg-background shadow-sm' />
+                </div>
+            )
+
         return (
             <div data-preview-mode={mode} className='flex h-full flex-col bg-background'>
                 <span className='px-6 pt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>Resume preview</span>
@@ -322,11 +377,11 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         aria-label='Open the full resume PDF in a new tab'
                         className='mx-6 my-4 block min-h-0 flex-1 overflow-hidden border border-border bg-background shadow-sm outline-none transition-colors hover:border-foreground/35 focus-visible:border-foreground/50 focus-visible:ring-2 focus-visible:ring-foreground/30'
                     >
-                        <ResumePdf file={item.pdfUrl} />
+                        {resumePreview}
                     </a>
                 ) : (
                     <div className='mx-6 my-4 min-h-0 flex-1 overflow-hidden border border-border bg-background shadow-sm'>
-                        <ResumePdf file={item.pdfUrl} />
+                        {resumePreview}
                     </div>
                 )}
             </div>

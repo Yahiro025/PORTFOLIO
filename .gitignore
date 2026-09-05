@@ -24,3 +24,6 @@ yarn-error.log*
 next-env.d.ts
 .superpowers
 docs/**
+
+PERFORMANCE_AUDIT.md
+PERFORMANCE_ISSUES.md

@@ -61,9 +61,12 @@ export const getPreviewPresentation = (
     renderedIndex: number,
     activeIndex: number,
     settledIndex: number | null,
-    interactingIndex: number | null
+    interactingIndex: number | null,
+    liveMountEnabled = true
 ): PreviewPresentation => {
     if (item.kind !== 'project') return item.kind
+
+    if (!liveMountEnabled) return 'poster'
 
     const exactActiveCopy = renderedIndex === activeIndex && renderedIndex === settledIndex
 
@@ -71,6 +74,30 @@ export const getPreviewPresentation = (
     if (interactingIndex === renderedIndex) return 'live-interactive'
 
     return 'live-passive'
+}
+
+export const shouldMountProjectIframe = (
+    presentation: PreviewPresentation,
+    liveUrl?: string | null
+): boolean => {
+    if (!liveUrl) return false
+
+    return presentation === 'live-passive' || presentation === 'live-interactive'
+}
+
+export const shouldMountResumePdf = (
+    item: Pick<PortfolioItem, 'kind'>,
+    renderedIndex: number,
+    activeIndex: number,
+    settledIndex: number | null,
+    mode: 'reel' | 'detail',
+    liveMountEnabled = true
+): boolean => {
+    if (item.kind !== 'resume') return false
+    if (mode === 'detail') return true
+    if (!liveMountEnabled || settledIndex === null) return false
+
+    return renderedIndex === activeIndex && renderedIndex === settledIndex
 }
 
 export const reduceInteraction = (

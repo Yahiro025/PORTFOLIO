@@ -38,13 +38,6 @@ const RENDERED = LOOP_COPIES * N
 const POS_MIN = N
 const POS_MAX = 2 * N
 
-// How many slots on either side of the active one get their iframe mounted
-// (hidden) ahead of time. The static poster screenshot (FolioPreview's
-// posterUrl) is what makes every project look already loaded at a glance;
-// this radius just pre-warms the real iframe so the swap to live is
-// seamless once a slot settles as active.
-const PRELOAD_RADIUS = 1
-
 const SMOOTHING = 0.14
 const WHEEL_CAP = 200
 const SNAP_IDLE_MS = 90
@@ -72,6 +65,7 @@ interface FolioReelProps {
 export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const [isMobile, setIsMobile] = useState(false)
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+    const [liveMountEnabled, setLiveMountEnabled] = useState(false)
     const [activeIdx, setActiveIdx] = useState(LANDING_POS)
     const [settledRenderedIdx, setSettledRenderedIdx] = useState<number | null>(null)
     const [interactingRenderedIdx, setInteractingRenderedIdx] = useState<number | null>(null)
@@ -184,6 +178,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     useEffect(() => {
         if (!motionPolicy.blurEntrance && !motionPolicy.autoPass) {
             entranceDoneRef.current = true
+            setLiveMountEnabled(true)
             gsap.set([titleRevealRef.current, imageRevealRef.current], {
                 opacity: 1,
                 y: 0,
@@ -203,6 +198,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             const tl = gsap.timeline({
                 onComplete: () => {
                     entranceDoneRef.current = true
+                    setLiveMountEnabled(true)
                     document.body.style.overflow = prevBodyOverflowRef.current
                     entranceTimelineRef.current = null
                 }
@@ -285,6 +281,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             if (chrome) gsap.set(chrome, { opacity: 1, y: 0 })
 
             entranceDoneRef.current = true
+            setLiveMountEnabled(true)
             document.body.style.overflow = prevBodyOverflowRef.current
         }
 
@@ -930,7 +927,8 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                 i,
                                 activeIdx,
                                 settledRenderedIdx,
-                                interactingRenderedIdx
+                                interactingRenderedIdx,
+                                liveMountEnabled
                             )
 
                             return (
@@ -964,7 +962,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             presentation={presentation}
                                             github={github}
                                             mode='reel'
-                                            preload={Math.abs(i - activeIdx) <= PRELOAD_RADIUS}
+                                            renderedIndex={i}
+                                            activeIndex={activeIdx}
+                                            settledIndex={settledRenderedIdx}
+                                            liveMountEnabled={liveMountEnabled}
                                             onInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'enter', renderedIndex: i }))}
                                             onExitInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'exit' }))}
                                             onOpenDetails={() => navigateAndOpen(i)}
