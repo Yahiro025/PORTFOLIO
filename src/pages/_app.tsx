@@ -5,6 +5,7 @@ import '@/styles/target-cursor.css'
 import type { FC, ReactNode } from 'react'
 import type { AppProps } from 'next/app'
 
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import dynamic from 'next/dynamic'
 import { Geist, Geist_Mono } from 'next/font/google'
 
@@ -28,6 +29,7 @@ const App: FC<AppProps> = ({ Component, pageProps }): ReactNode => {
         <div className={`${geistSans.variable} ${geistMono.variable} h-full font-sans antialiased`}>
             <TargetCursor targetSelector='.cursor-target' spinDuration={2} hideDefaultCursor parallaxOn />
             <Component {...pageProps} />
+            <SpeedInsights />
         </div>
     )
 }
