@@ -1,7 +1,9 @@
-import type { FC, ReactNode } from 'react'
-import type { GitHubSnapshot, PortfolioItem } from '@/types'
+import type { CSSProperties, FC, ReactNode } from 'react'
+import type { FolioLayout, GitHubSnapshot, PortfolioItem } from '@/types'
 
 import gsap from 'gsap'
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
+import { useRouter } from 'next/router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
@@ -20,13 +22,18 @@ import {
     folioItems
 } from '@/constants/folio'
 import { FolioPreview } from '@/components/landing/folio-preview'
+import { ContactSheet, CONTACT_LINKS } from '@/components/landing/contact-lanyard'
+import { MobileGallery } from '@/components/landing/mobile-gallery'
 import {
     getGroup,
     getGroupPosition,
     getMotionPolicy,
+    getNavigationPosition,
+    getProjectIdFromSearch,
     getPreviewPresentation,
     getReelOffsets,
     reduceInteraction,
+    snapReelPosition,
     TITLE_REGISTER
 } from '@/lib/portfolio'
 
@@ -44,9 +51,6 @@ const SNAP_IDLE_MS = 90
 const NONACTIVE_OPACITY = 0.7
 const HOVER_LERP = 0.18
 const HOVER_WGHT_BONUS = 80
-const CURSOR_SIZE = 76
-const CURSOR_HALF = CURSOR_SIZE / 2
-const CURSOR_LERP = 0.22
 const TITLE_MASK_PX = 20
 
 const MASK_GRADIENT = `linear-gradient(to bottom, transparent 0, #000 ${TITLE_MASK_PX}px, #000 calc(100% - ${TITLE_MASK_PX}px), transparent 100%)`
@@ -56,6 +60,33 @@ const RENDERED_ITEMS: PortfolioItem[] = Array.from({ length: RENDERED }, (_, i) 
 const ABOUT_LOGICAL_IDX = folioItems.findIndex(item => item.id === 'about')
 const LANDING_POS = POS_MIN + ABOUT_LOGICAL_IDX
 
+const PROJECT_ITEMS = folioItems.filter((item): item is Extract<PortfolioItem, { kind: 'project' }> => item.kind === 'project')
+const PROFILE_ITEM = folioItems.find((item): item is Extract<PortfolioItem, { kind: 'about' }> => item.kind === 'about')!
+const RESUME_ITEM = folioItems.find((item): item is Extract<PortfolioItem, { kind: 'resume' }> => item.kind === 'resume')!
+const GITHUB_ITEM = folioItems.find((item): item is Extract<PortfolioItem, { kind: 'github' }> => item.kind === 'github')!
+
+// Both layouts are in the HTML. CSS selects one before hydration.
+const initialLayoutStyle = (L: FolioLayout, prefix: string) => {
+    const offsets = getReelOffsets(LANDING_POS, L, RENDERED)
+    return {
+        [`--${prefix}title-top`]: `${L.titleTopVh}dvh`,
+        [`--${prefix}title-area`]: `${L.titleAreaVh}dvh`,
+        [`--${prefix}title-slot`]: `${L.titleSlotVh}dvh`,
+        [`--${prefix}title-font`]: `${L.titleFontVhMax}dvh`,
+        [`--${prefix}title-offset`]: `${offsets.titleVh}dvh`,
+        [`--${prefix}image-top`]: `${L.imageWrapperTopVh}dvh`,
+        [`--${prefix}image-area`]: `${L.imageWrapperHeightVh}dvh`,
+        [`--${prefix}image-height`]: `${L.imageHeightVh}dvh`,
+        [`--${prefix}image-pitch`]: `${L.imagePitchVh}dvh`,
+        [`--${prefix}image-offset`]: `calc(${offsets.previewVh}dvh + ${offsets.previewPx}px)`
+    }
+}
+
+const INITIAL_STYLE = {
+    ...initialLayoutStyle(DESKTOP_LAYOUT, 'desktop-'),
+    ...initialLayoutStyle(MOBILE_LAYOUT, 'mobile-')
+} as CSSProperties
+
 type Phase = 'idle' | 'opening' | 'detail' | 'closing'
 
 interface FolioReelProps {
@@ -63,49 +94,49 @@ interface FolioReelProps {
 }
 
 export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
+    const router = useRouter()
     const [isMobile, setIsMobile] = useState(false)
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
     const [liveMountEnabled, setLiveMountEnabled] = useState(false)
     const [activeIdx, setActiveIdx] = useState(LANDING_POS)
     const [settledRenderedIdx, setSettledRenderedIdx] = useState<number | null>(null)
+    const settledIdxRef = useRef<number | null>(null)
     const [interactingRenderedIdx, setInteractingRenderedIdx] = useState<number | null>(null)
-    const [phase, setPhase] = useState<Phase>('idle')
+    const phaseRef = useRef<Phase>('idle')
     const [detailIdx, setDetailIdx] = useState<number | null>(null)
+    const [detailElement, setDetailElement] = useState<HTMLDivElement | null>(null)
+    const [contactOpen, setContactOpen] = useState(false)
 
     const sectionRef = useRef<HTMLElement>(null)
     const titleRevealRef = useRef<HTMLDivElement>(null)
     const titleStripRef = useRef<HTMLDivElement>(null)
     const imageRevealRef = useRef<HTMLDivElement>(null)
     const imageStripRef = useRef<HTMLDivElement>(null)
-    const clickMeRef = useRef<HTMLDivElement>(null)
     const counterRef = useRef<HTMLSpanElement>(null)
 
     const detailRef = useRef<HTMLDivElement>(null)
     const detailImageRef = useRef<HTMLDivElement>(null)
     const detailTitleRef = useRef<HTMLHeadingElement>(null)
+    const mobileFocusRef = useRef<HTMLElement | null>(null)
 
     const titleRefs = useRef<(HTMLDivElement | null)[]>([])
     const slotRefs = useRef<(HTMLDivElement | null)[]>([])
     const titleHoverProgressRef = useRef<number[]>([])
 
     const layoutRef = useRef(DESKTOP_LAYOUT)
-    const isMobileRef = useRef(false)
+    const reducedMotionRef = useRef(false)
 
     const targetPosRef = useRef(LANDING_POS)
     const posRef = useRef(LANDING_POS)
     const activeIdxRef = useRef(LANDING_POS)
 
-    const detailOpenRef = useRef(false)
     const interactingRef = useRef(false)
     const navigatingRef = useRef(false)
-    const entranceDoneRef = useRef(false)
 
     const lastWheelTimeRef = useRef(0)
+    const lastDirectionRef = useRef(0)
+    const renderReelRef = useRef<() => void>(() => {})
     const navProxyRef = useRef({ value: LANDING_POS })
-    const hoverRef = useRef({ x: 0, y: 0 })
-    const cursorRenderRef = useRef({ x: 0, y: 0 })
-    const isHoveringActiveRef = useRef(false)
-    const onSectionRef = useRef(false)
     const hoveredTitleIdxRef = useRef<number | null>(null)
 
     const sourceImageRectRef = useRef<DOMRect | null>(null)
@@ -113,18 +144,25 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const hiddenIdxRef = useRef<number | null>(null)
     const flipAppliedRef = useRef(false)
 
-    const prevBodyOverflowRef = useRef('')
-    const entranceTimelineRef = useRef<ReturnType<typeof gsap.timeline> | null>(null)
-    const handleCloseRef = useRef<() => void>(() => {})
+    const finishCloseRef = useRef<() => void>(() => {})
+    const initialProjectQueryHandledRef = useRef(false)
 
-    const layout = isMobile ? MOBILE_LAYOUT : DESKTOP_LAYOUT
     const detailItem = detailIdx !== null ? folioItems[detailIdx] : null
     const motionPolicy = getMotionPolicy(prefersReducedMotion)
     const activeGroupPosition = getGroupPosition(folioItems, activeIdx % N)
+    const viewportIsMobile = isMobile || layoutRef.current === MOBILE_LAYOUT
+    const removeInvalidProjectQuery = () => {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('project')
+        void router.replace(`${url.pathname}${url.search}${url.hash}`, undefined, { shallow: true, scroll: false })
+    }
 
     useEffect(() => {
         const mq = window.matchMedia('(max-width: 767px)')
-        const update = () => setIsMobile(mq.matches)
+        const update = () => {
+            layoutRef.current = mq.matches ? MOBILE_LAYOUT : DESKTOP_LAYOUT
+            setIsMobile(mq.matches)
+        }
 
         update()
         mq.addEventListener('change', update)
@@ -134,22 +172,16 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
     useEffect(() => {
         const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-        const update = () => setPrefersReducedMotion(mq.matches)
+        const update = () => {
+            reducedMotionRef.current = mq.matches
+            setPrefersReducedMotion(mq.matches)
+        }
 
         update()
         mq.addEventListener('change', update)
 
         return () => mq.removeEventListener('change', update)
     }, [])
-
-    useEffect(() => {
-        layoutRef.current = isMobile ? MOBILE_LAYOUT : DESKTOP_LAYOUT
-        isMobileRef.current = isMobile
-    }, [isMobile])
-
-    useEffect(() => {
-        detailOpenRef.current = phase !== 'idle'
-    }, [phase])
 
     useEffect(() => {
         interactingRef.current = interactingRenderedIdx !== null
@@ -159,160 +191,45 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         const counter = counterRef.current
 
         if (!counter || motionPolicy.sharedElementDuration === 0) return
+        if (activeIdxRef.current === LANDING_POS) return
 
         gsap.fromTo(counter, { y: 6, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
     }, [activeGroupPosition.group, motionPolicy.sharedElementDuration])
 
-    // Settled index tracker: 300ms after active index changes
+    // Keep the initial About card visible and still; detail/hover motion stays intact.
     useEffect(() => {
-        setSettledRenderedIdx(null)
-        const timeout = window.setTimeout(() => {
-            setSettledRenderedIdx(activeIdx)
-        }, 300)
-
-        return () => window.clearTimeout(timeout)
-    }, [activeIdx])
-
-    // Entrance timeline — fade + un-blur the strips, late chrome reveal, and an
-    // auto-scroll that flashes through every project before landing on a row.
-    useEffect(() => {
-        if (!motionPolicy.blurEntrance && !motionPolicy.autoPass) {
-            entranceDoneRef.current = true
-            setLiveMountEnabled(true)
-            gsap.set([titleRevealRef.current, imageRevealRef.current], {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                filter: 'none'
-            })
-
-            const chrome = sectionRef.current?.querySelectorAll('[data-chrome]')
-            if (chrome && chrome.length > 0) gsap.set(chrome, { opacity: 1, y: 0 })
-            return
-        }
-
-        prevBodyOverflowRef.current = document.body.style.overflow
-        document.body.style.overflow = 'hidden'
-
-        const ctx = gsap.context(() => {
-            const tl = gsap.timeline({
-                onComplete: () => {
-                    entranceDoneRef.current = true
-                    setLiveMountEnabled(true)
-                    document.body.style.overflow = prevBodyOverflowRef.current
-                    entranceTimelineRef.current = null
-                }
-            })
-
-            entranceTimelineRef.current = tl
-
-            tl.fromTo(
-                [titleRevealRef.current, imageRevealRef.current],
-                { opacity: 0, y: 28, scale: 1.04, filter: 'blur(14px)' },
-                { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.9, ease: 'power4.out', stagger: 0.06 },
-                0
-            )
-
-            const chrome = sectionRef.current?.querySelectorAll('[data-chrome]')
-
-            if (chrome && chrome.length > 0) {
-                tl.fromTo(
-                    chrome,
-                    { opacity: 0, y: 8 },
-                    { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.05 },
-                    0.5
-                )
-            }
-
-            const entranceProxy = { value: LANDING_POS }
-            const cycleDistance = N * (1 + Math.floor(Math.random() * 2))
-
-            tl.to(
-                entranceProxy,
-                {
-                    value: LANDING_POS + cycleDistance,
-                    duration: 1.7,
-                    ease: 'power4.out',
-                    onUpdate: () => {
-                        let v = entranceProxy.value
-
-                        while (v < POS_MIN) v += N
-                        while (v >= POS_MAX) v -= N
-
-                        posRef.current = v
-                        targetPosRef.current = v
-                    }
-                },
-                0
-            )
-        }, sectionRef)
-
-        return () => {
-            ctx.revert()
-            document.body.style.overflow = prevBodyOverflowRef.current
-            entranceTimelineRef.current = null
-        }
-    }, [motionPolicy.autoPass, motionPolicy.blurEntrance])
+        setLiveMountEnabled(true)
+    }, [])
 
     // Main render loop + input. One rAF ticker drives every transform.
     useEffect(() => {
         const section = sectionRef.current
 
-        if (!section) return
+        if (!section || isMobile || window.matchMedia('(max-width: 767px)').matches) {
+            renderReelRef.current = () => {}
+            return
+        }
 
         let raf = 0
         let touchY = 0
 
-        const skipEntranceIfRunning = () => {
-            if (entranceDoneRef.current) return
+        let lastPosition = NaN
+        let lastHeight = 0
+        let lastLayout = layoutRef.current
+        let lastHovered: number | null = null
+        let hoverMoving = false
 
-            entranceTimelineRef.current?.kill()
-            entranceTimelineRef.current = null
+        const render = () => {
+            const next = posRef.current
+            const hoveredIdx = hoveredTitleIdxRef.current
+            if (next === lastPosition && window.innerHeight === lastHeight &&
+                layoutRef.current === lastLayout && hoveredIdx === lastHovered && !hoverMoving) return
 
-            gsap.set([titleRevealRef.current, imageRevealRef.current], {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                filter: 'blur(0px)'
-            })
-
-            const chrome = sectionRef.current?.querySelectorAll('[data-chrome]')
-
-            if (chrome) gsap.set(chrome, { opacity: 1, y: 0 })
-
-            entranceDoneRef.current = true
-            setLiveMountEnabled(true)
-            document.body.style.overflow = prevBodyOverflowRef.current
-        }
-
-        const tick = () => {
-            if (
-                entranceDoneRef.current &&
-                !navigatingRef.current &&
-                !detailOpenRef.current &&
-                performance.now() - lastWheelTimeRef.current > SNAP_IDLE_MS
-            ) {
-                const t = targetPosRef.current
-                const snapped = Math.round(t)
-
-                if (snapped !== t) targetPosRef.current = snapped
-            }
-
-            const target = targetPosRef.current
-            const cur = posRef.current
-            let next = Math.abs(target - cur) < 0.0005 ? target : cur + (target - cur) * SMOOTHING
-
-            while (next < POS_MIN) {
-                next += N
-                targetPosRef.current += N
-            }
-
-            while (next >= POS_MAX) {
-                next -= N
-                targetPosRef.current -= N
-            }
-
-            posRef.current = next
+            lastPosition = next
+            lastHeight = window.innerHeight
+            lastLayout = layoutRef.current
+            lastHovered = hoveredIdx
+            hoverMoving = false
 
             const L = layoutRef.current
             const vh = window.innerHeight / 100
@@ -355,8 +272,6 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 el.style.transform = `scale(${scale.toFixed(4)})`
             }
 
-            const hoveredIdx = hoveredTitleIdxRef.current
-
             for (let i = 0; i < RENDERED; i++) {
                 const el = titleRefs.current[i]
 
@@ -369,7 +284,9 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                 const targetHover = hoveredIdx !== null && i % N === hoveredIdx % N ? 1 : 0
                 const curHover = titleHoverProgressRef.current[i] ?? 0
-                const nextHover = curHover + (targetHover - curHover) * HOVER_LERP
+                const nextHover = Math.abs(targetHover - curHover) < 0.001 || reducedMotionRef.current
+                    ? targetHover : curHover + (targetHover - curHover) * HOVER_LERP
+                hoverMoving ||= nextHover !== targetHover
 
                 titleHoverProgressRef.current[i] = nextHover
 
@@ -385,7 +302,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                 if (h3) {
                     const fontVh = (L.titleFontVhMin + (L.titleFontVhMax - L.titleFontVhMin) * tType) * reg.scale
-                    h3.style.fontSize = `${fontVh.toFixed(2)}dvh`
+                    h3.style.transform = `scale(${(fontVh / (L.titleFontVhMax * reg.scale)).toFixed(4)})`
                 }
             }
 
@@ -396,128 +313,146 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 setActiveIdx(rounded)
             }
 
-            const ring = clickMeRef.current
+        }
 
-            if (ring) {
-                const visible =
-                    !isMobileRef.current &&
-                    isHoveringActiveRef.current &&
-                    onSectionRef.current &&
-                    !detailOpenRef.current &&
-                    !interactingRef.current
-                const lerp = visible ? CURSOR_LERP : 1
+        renderReelRef.current = render
 
-                cursorRenderRef.current.x += (hoverRef.current.x - cursorRenderRef.current.x) * lerp
-                cursorRenderRef.current.y += (hoverRef.current.y - cursorRenderRef.current.y) * lerp
+        const tick = () => {
+            if (
+                !navigatingRef.current &&
+                phaseRef.current === 'idle' &&
+                performance.now() - lastWheelTimeRef.current > SNAP_IDLE_MS
+            ) {
+                const t = targetPosRef.current
+                const snapped = snapReelPosition(t, lastDirectionRef.current)
 
-                ring.style.transform = `translate3d(${(cursorRenderRef.current.x - CURSOR_HALF).toFixed(2)}px, ${(cursorRenderRef.current.y - CURSOR_HALF).toFixed(2)}px, 0)`
-                ring.style.opacity = visible ? '1' : '0'
+                if (snapped !== t) targetPosRef.current = snapped
             }
 
+            const target = targetPosRef.current
+            const cur = posRef.current
+            let next = reducedMotionRef.current || Math.abs(target - cur) < 0.0005 ? target : cur + (target - cur) * SMOOTHING
+
+            while (next < POS_MIN) {
+                next += N
+                targetPosRef.current += N
+            }
+
+            while (next >= POS_MAX) {
+                next -= N
+                targetPosRef.current -= N
+            }
+
+            posRef.current = next
+
+            const settled = !navigatingRef.current && next === targetPosRef.current && phaseRef.current === 'idle'
+                ? Math.round(next) : null
+            if (settled !== settledIdxRef.current) {
+                settledIdxRef.current = settled
+                setSettledRenderedIdx(settled)
+            }
+
+            render()
             raf = requestAnimationFrame(tick)
         }
 
         raf = requestAnimationFrame(tick)
 
+        const cancelNavigation = () => {
+            gsap.killTweensOf(navProxyRef.current)
+            navigatingRef.current = false
+            settledIdxRef.current = null
+            setSettledRenderedIdx(null)
+        }
+
         const onWheel = (e: WheelEvent) => {
-            if (!onSectionRef.current) return
-            if (detailOpenRef.current) return
+            if (e.ctrlKey || e.deltaY === 0) return
+            if (phaseRef.current === 'closing') finishCloseRef.current()
+            if (phaseRef.current !== 'idle') return
             if (interactingRef.current) return
 
             const target = e.target as HTMLElement | null
 
-            if (target?.closest('[data-no-wheel]')) return
+            if (!target || !section.contains(target) || target.closest('[data-no-wheel]')) return
 
             e.preventDefault()
-
-            if (!entranceDoneRef.current) skipEntranceIfRunning()
-
-            if (navigatingRef.current) {
-                gsap.killTweensOf(navProxyRef.current)
-                navigatingRef.current = false
-            }
+            cancelNavigation()
 
             lastWheelTimeRef.current = performance.now()
 
-            const delta = Math.max(-WHEEL_CAP, Math.min(WHEEL_CAP, e.deltaY))
+            const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1
+            const delta = Math.max(-WHEEL_CAP, Math.min(WHEEL_CAP, e.deltaY * unit))
+            lastDirectionRef.current = Math.sign(delta)
 
             targetPosRef.current += delta / layoutRef.current.pixelsPerItem
         }
 
         const onTouchStart = (e: TouchEvent) => {
-            if (detailOpenRef.current) return
+            if (phaseRef.current === 'closing') finishCloseRef.current()
+            if (phaseRef.current !== 'idle') return
             if (interactingRef.current) return
 
             const target = e.target as HTMLElement | null
 
-            if (target?.closest('[data-no-wheel]')) return
-            if (!entranceDoneRef.current) skipEntranceIfRunning()
+            if (!target || !section.contains(target) || target.closest('[data-no-wheel]')) return
 
             touchY = e.touches[0]?.clientY ?? 0
         }
 
         const onTouchMove = (e: TouchEvent) => {
-            if (detailOpenRef.current) return
+            if (phaseRef.current === 'closing') finishCloseRef.current()
+            if (phaseRef.current !== 'idle') return
             if (interactingRef.current) return
 
             const target = e.target as HTMLElement | null
 
-            if (target?.closest('[data-no-wheel]')) return
+            if (!target || !section.contains(target) || target.closest('[data-no-wheel]')) return
 
             e.preventDefault()
-
-            if (!entranceDoneRef.current) skipEntranceIfRunning()
-
             const y = e.touches[0]?.clientY ?? touchY
             const delta = touchY - y
 
             touchY = y
 
-            if (navigatingRef.current) {
-                gsap.killTweensOf(navProxyRef.current)
-                navigatingRef.current = false
-            }
+            cancelNavigation()
 
             lastWheelTimeRef.current = performance.now()
 
             const capped = Math.max(-WHEEL_CAP, Math.min(WHEEL_CAP, delta))
 
+            lastDirectionRef.current = Math.sign(capped)
             targetPosRef.current += capped / layoutRef.current.pixelsPerItem
         }
 
-        const onPointerEnter = () => {
-            onSectionRef.current = true
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (phaseRef.current === 'closing') finishCloseRef.current()
+            if (phaseRef.current !== 'idle' || interactingRef.current || e.altKey || e.ctrlKey || e.metaKey) return
+            const target = e.target as HTMLElement | null
+            if (target?.closest('input, textarea, select, [contenteditable="true"], [data-no-wheel]')) return
+            const step = { ArrowDown: 1, PageDown: 1, ArrowUp: -1, PageUp: -1 }[e.key]
+            if (step === undefined && e.key !== 'Home' && e.key !== 'End') return
+            e.preventDefault()
+            cancelNavigation()
+            lastDirectionRef.current = 0
+            targetPosRef.current = step !== undefined
+                ? Math.round(targetPosRef.current) + step
+                : getNavigationPosition(posRef.current, e.key === 'Home' ? 0 : N - 1, N)
         }
 
-        const onPointerLeave = () => {
-            onSectionRef.current = false
-            isHoveringActiveRef.current = false
-        }
-
-        const onPointerMove = (e: PointerEvent) => {
-            const rect = section.getBoundingClientRect()
-
-            hoverRef.current.x = e.clientX - rect.left
-            hoverRef.current.y = e.clientY - rect.top
-        }
-
-        window.addEventListener('wheel', onWheel, { passive: false })
+        section.addEventListener('wheel', onWheel, { passive: false })
+        window.addEventListener('keydown', onKeyDown)
         section.addEventListener('touchstart', onTouchStart, { passive: true })
         section.addEventListener('touchmove', onTouchMove, { passive: false })
-        section.addEventListener('pointerenter', onPointerEnter)
-        section.addEventListener('pointerleave', onPointerLeave)
-        section.addEventListener('pointermove', onPointerMove)
 
         return () => {
             cancelAnimationFrame(raf)
-            window.removeEventListener('wheel', onWheel)
+            section.removeEventListener('wheel', onWheel)
+            window.removeEventListener('keydown', onKeyDown)
+            gsap.killTweensOf(navProxyRef.current)
             section.removeEventListener('touchstart', onTouchStart)
             section.removeEventListener('touchmove', onTouchMove)
-            section.removeEventListener('pointerenter', onPointerEnter)
-            section.removeEventListener('pointerleave', onPointerLeave)
-            section.removeEventListener('pointermove', onPointerMove)
         }
-    }, [])
+    }, [isMobile])
 
     // Lock body scroll + wire Esc while detail panel or interaction is active.
     // Note: Escape listener is best-effort when focus is inside a cross-origin iframe.
@@ -531,8 +466,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             if (e.key === 'Escape') {
                 if (interactingRenderedIdx !== null) {
                     setInteractingRenderedIdx(null)
-                } else if (detailIdx !== null) {
-                    handleCloseRef.current()
+
                 }
             }
         }
@@ -545,46 +479,60 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         }
     }, [detailIdx, interactingRenderedIdx])
 
-    const openDetailFromActiveAt = (idx: number) => {
-        if (phase !== 'idle' || !entranceDoneRef.current) return
+    const openDetailFromActiveAt = (idx: number, fromHistory = false) => {
+        if (phaseRef.current === 'closing') finalizeClose()
+        if (phaseRef.current !== 'idle') return
 
-        const slot = slotRefs.current[idx]
-        const titleRow = titleRefs.current[idx]
+        const item = folioItems[idx % N]
+
+        if (!fromHistory && item.kind === 'project') {
+            const url = new URL(window.location.href)
+            url.searchParams.set('project', item.id)
+            window.history.pushState(
+                { ...(window.history.state ?? {}), portfolioProject: item.id },
+                '',
+                `${url.pathname}${url.search}${url.hash}`
+            )
+        }
+
+        gsap.killTweensOf(navProxyRef.current)
+        navigatingRef.current = false
+        posRef.current = targetPosRef.current = idx
+        activeIdxRef.current = idx
+        setActiveIdx(idx)
+        renderReelRef.current()
+        phaseRef.current = 'opening'
+
+        const slot = viewportIsMobile ? null : slotRefs.current[idx]
+        const titleRow = viewportIsMobile ? null : titleRefs.current[idx]
         const titleH3 = titleRow?.querySelector('h3') as HTMLElement | null
 
         sourceImageRectRef.current = slot?.getBoundingClientRect() ?? null
         sourceTitleRectRef.current = titleH3?.getBoundingClientRect() ?? null
-        hiddenIdxRef.current = idx
+        hiddenIdxRef.current = viewportIsMobile ? null : idx
 
         if (slot) slot.style.visibility = 'hidden'
         if (titleH3) titleH3.style.visibility = 'hidden'
 
-        setPhase('opening')
         setDetailIdx(idx % N)
     }
 
-    const navigateAndOpen = (i: number) => {
-        if (phase !== 'idle' || !entranceDoneRef.current) return
+    const navigateAndOpen = (i: number, open = true, fromHistory = false) => {
+        if (phaseRef.current === 'closing') finalizeClose()
+        if (phaseRef.current !== 'idle') return
+        interactingRef.current = false
+        setInteractingRenderedIdx(null)
 
         const currentIdx = activeIdxRef.current
 
         if (i === currentIdx) {
-            openDetailFromActiveAt(currentIdx)
+            if (open) openDetailFromActiveAt(currentIdx, fromHistory)
             return
         }
 
         const currentPos = posRef.current
-        const currentLogical = ((Math.round(currentPos) % N) + N) % N
-        const clickedLogical = ((i % N) + N) % N
-        let delta = clickedLogical - currentLogical
-
-        if (delta > N / 2) delta -= N
-        if (delta < -N / 2) delta += N
-
-        if (delta === 0) {
-            openDetailFromActiveAt(currentIdx)
-            return
-        }
+        const destination = getNavigationPosition(currentPos, i, N)
+        const delta = destination - currentPos
 
         const proxy = navProxyRef.current
         proxy.value = currentPos
@@ -596,7 +544,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
         gsap.killTweensOf(proxy)
         gsap.to(proxy, {
-            value: currentPos + delta,
+            value: destination,
             duration,
             ease: 'power3.inOut',
             onUpdate: () => {
@@ -610,12 +558,15 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             },
             onComplete: () => {
                 navigatingRef.current = false
-                requestAnimationFrame(() => openDetailFromActiveAt(activeIdxRef.current))
+                if (open) openDetailFromActiveAt(POS_MIN + ((destination % N) + N) % N, fromHistory)
             }
         })
     }
 
     const finalizeClose = () => {
+        if (detailRef.current) {
+            gsap.killTweensOf([detailRef.current, ...detailRef.current.querySelectorAll('*')])
+        }
         const hidIdx = hiddenIdxRef.current
 
         if (hidIdx !== null) {
@@ -629,7 +580,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             for (let i = 0; i < hidIdx; i++) {
                 const row = titleRefs.current[i]
 
-                if (row) gsap.set(row, { clearProps: 'transform' })
+                if (row) {
+                    gsap.killTweensOf(row)
+                    gsap.set(row, { clearProps: 'transform' })
+                }
             }
         }
 
@@ -637,17 +591,28 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         sourceImageRectRef.current = null
         sourceTitleRectRef.current = null
         setDetailIdx(null)
-        setPhase('idle')
+        phaseRef.current = 'idle'
+        interactingRef.current = false
+        setInteractingRenderedIdx(null)
     }
 
     const handleClose = () => {
-        if (phase === 'closing' || phase === 'idle') return
+        if (phaseRef.current === 'closing' || phaseRef.current === 'idle') return
 
-        setPhase('closing')
+        if (
+            detailItem?.kind === 'project' &&
+            getProjectIdFromSearch(window.location.search) === detailItem.id
+        ) {
+            window.history.back()
+            return
+        }
+
+        phaseRef.current = 'closing'
 
         const duration = motionPolicy.sharedElementDuration > 0 ? 0.85 : 0
-        const sourceImg = sourceImageRectRef.current
-        const sourceTitle = sourceTitleRectRef.current
+        const sourceIdx = hiddenIdxRef.current
+        const sourceImg = sourceIdx === null ? null : slotRefs.current[sourceIdx]?.getBoundingClientRect()
+        const sourceTitle = sourceIdx === null ? null : titleRefs.current[sourceIdx]?.querySelector('h3')?.getBoundingClientRect()
         const imgEl = detailImageRef.current
         const titleEl = detailTitleRef.current
         const root = detailRef.current
@@ -728,17 +693,106 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     }
 
     useEffect(() => {
-        handleCloseRef.current = handleClose
+        finishCloseRef.current = finalizeClose
     })
+
+    // Keep project details addressable without turning the reel into a second
+    // router. A same-document base entry means Back closes a detail panel even
+    // when the visitor opened the project URL directly.
+    useEffect(() => {
+        if (initialProjectQueryHandledRef.current) return
+
+        initialProjectQueryHandledRef.current = true
+        const projectId = getProjectIdFromSearch(window.location.search)
+
+        if (!projectId) return
+
+        const logicalIndex = folioItems.findIndex(item => item.kind === 'project' && item.id === projectId)
+
+        if (logicalIndex < 0) {
+            removeInvalidProjectQuery()
+            return
+        }
+
+        const projectUrl = new URL(window.location.href)
+        const baseUrl = new URL(projectUrl)
+        baseUrl.searchParams.delete('project')
+
+        window.history.replaceState(
+            { ...(window.history.state ?? {}), portfolioBase: true },
+            '',
+            `${baseUrl.pathname}${baseUrl.search}${baseUrl.hash}`
+        )
+        window.history.pushState(
+            { ...(window.history.state ?? {}), portfolioProject: projectId },
+            '',
+            `${projectUrl.pathname}${projectUrl.search}${projectUrl.hash}`
+        )
+
+        window.requestAnimationFrame(() => {
+            if (getProjectIdFromSearch(window.location.search) !== projectId) return
+
+            const renderedIndex = POS_MIN + logicalIndex
+            gsap.killTweensOf(navProxyRef.current)
+            navigatingRef.current = false
+            posRef.current = targetPosRef.current = renderedIndex
+            activeIdxRef.current = renderedIndex
+            setActiveIdx(renderedIndex)
+            renderReelRef.current()
+            openDetailFromActiveAt(renderedIndex, true)
+        })
+    }, [])
+
+    useEffect(() => {
+        const onPopState = () => {
+            const projectId = getProjectIdFromSearch(window.location.search)
+
+            if (!projectId) {
+                if (detailIdx !== null || phaseRef.current !== 'idle') finishCloseRef.current()
+                return
+            }
+
+            const logicalIndex = folioItems.findIndex(item => item.kind === 'project' && item.id === projectId)
+
+            if (logicalIndex < 0) {
+                removeInvalidProjectQuery()
+                if (detailIdx !== null) finishCloseRef.current()
+                return
+            }
+
+            if (detailIdx === logicalIndex) return
+            if (detailIdx !== null) finishCloseRef.current()
+
+            window.requestAnimationFrame(() => {
+                navigateAndOpen(POS_MIN + logicalIndex, true, true)
+            })
+        }
+
+        window.addEventListener('popstate', onPopState)
+        return () => window.removeEventListener('popstate', onPopState)
+    }, [detailIdx])
 
     // Shared-element FLIP into the detail panel.
     useIsomorphicLayoutEffect(() => {
+        detailRef.current = detailElement
         if (detailIdx === null) {
             flipAppliedRef.current = false
             return
         }
 
-        if (flipAppliedRef.current) return
+        if (!detailElement) return
+
+        if (flipAppliedRef.current) {
+            if (phaseRef.current === 'closing') {
+                finalizeClose()
+            } else {
+                const elements = [detailImageRef.current, detailTitleRef.current]
+                gsap.killTweensOf(elements)
+                gsap.set(elements, { visibility: 'visible', x: 0, y: 0, scale: 1 })
+                phaseRef.current = 'detail'
+            }
+            return
+        }
 
         flipAppliedRef.current = true
 
@@ -784,7 +838,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 scale: 1,
                 duration,
                 ease: 'power4.out',
-                onComplete: () => setPhase('detail')
+                onComplete: () => { phaseRef.current = 'detail' }
             })
 
             const lift = sourceTitle.top - target.top
@@ -799,7 +853,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             }
         } else {
             if (titleEl) gsap.set(titleEl, { visibility: 'visible', x: 0, y: 0, scale: 1 })
-            setPhase('detail')
+            phaseRef.current = 'detail'
         }
 
         gsap.fromTo(
@@ -807,31 +861,61 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             { y: duration > 0 ? 24 : 0, opacity: 0, filter: motionPolicy.blurEntrance ? 'blur(8px)' : 'none' },
             { y: 0, opacity: 1, filter: 'none', duration: duration > 0 ? 0.9 : 0, ease: 'power4.out', stagger: duration > 0 ? 0.05 : 0, delay: duration > 0 ? 0.25 : 0 }
         )
-    }, [detailIdx, motionPolicy.sharedElementDuration, motionPolicy.blurEntrance])
+    }, [detailIdx, detailElement, isMobile, motionPolicy.sharedElementDuration, motionPolicy.blurEntrance])
+
+    const activeLogicalIdx = ((activeIdx % N) + N) % N
+    const mobileSelectedProjectIndex = PROJECT_ITEMS.findIndex(project => project.id === folioItems[activeLogicalIdx]?.id)
+
+    const selectMobileLogicalItem = (logicalIndex: number) => {
+        if (phaseRef.current === 'closing') finalizeClose()
+        if (phaseRef.current !== 'idle') return false
+
+        const renderedIndex = POS_MIN + logicalIndex
+        gsap.killTweensOf(navProxyRef.current)
+        navigatingRef.current = false
+        posRef.current = targetPosRef.current = renderedIndex
+        activeIdxRef.current = renderedIndex
+        setActiveIdx(renderedIndex)
+        renderReelRef.current()
+        return true
+    }
+
+    const selectMobileProject = (projectIndex: number) => {
+        if (PROJECT_ITEMS.length === 0) return
+        const wrappedIndex = (projectIndex + PROJECT_ITEMS.length) % PROJECT_ITEMS.length
+        const logicalIndex = folioItems.findIndex(item => item.id === PROJECT_ITEMS[wrappedIndex].id)
+        if (logicalIndex >= 0) selectMobileLogicalItem(logicalIndex)
+    }
+
+    const openMobileDetails = (projectIndex: number) => {
+        if (PROJECT_ITEMS.length === 0) return
+        const wrappedIndex = (projectIndex + PROJECT_ITEMS.length) % PROJECT_ITEMS.length
+        const logicalIndex = folioItems.findIndex(item => item.id === PROJECT_ITEMS[wrappedIndex].id)
+        if (logicalIndex < 0 || !selectMobileLogicalItem(logicalIndex)) return
+        openDetailFromActiveAt(POS_MIN + logicalIndex)
+    }
 
     return (
         <section
             ref={sectionRef}
             aria-label='Selected work'
-            className='relative h-[100dvh] w-full select-none overflow-hidden bg-background'
+            className='folio-reel relative h-[100dvh] w-full select-none overflow-hidden bg-background'
+            style={INITIAL_STYLE}
         >
-            {isMobile && <div aria-hidden className='absolute inset-x-0 top-0 z-[9] h-20 bg-background' />}
+            <div aria-hidden className='absolute inset-x-0 top-0 z-[9] h-20 bg-background md:hidden' />
 
             <div
                 data-chrome
-                data-no-wheel
-                className={cn(
-                    'absolute left-6 top-5 z-10 opacity-0 md:left-12 md:top-10',
-                    isMobile && 'flex items-center gap-4'
-                )}
+                className='absolute left-6 top-5 z-10 md:left-12 md:top-10'
             >
-                <button type='button' onClick={() => navigateAndOpen(POS_MIN + folioItems.findIndex(item => item.id === 'about'))} className='text-sm font-semibold text-foreground'>Bennett Payoyo</button>
-                {!isMobile && <p className='mt-1 text-xs text-muted-foreground'>2nd year BSCS · PUP</p>}
+                <h1 className='text-sm font-semibold text-foreground'><button type='button' onClick={() => viewportIsMobile ? selectMobileLogicalItem(ABOUT_LOGICAL_IDX) : navigateAndOpen(LANDING_POS)}>Bennett Payoyo</button></h1>
+                <p className='mt-1 text-xs text-muted-foreground'>2nd year BSCS · PUP</p>
+                <a href={CONTACT_LINKS.email} className='cursor-target mt-1 hidden w-fit text-xs text-muted-foreground underline-offset-4 hover:underline md:block'>Contact</a>
             </div>
 
             <div
                 data-chrome
-                className='pointer-events-none absolute right-6 top-14 z-10 flex items-center gap-3 opacity-0 md:right-12 md:top-10'
+                className='pointer-events-none absolute right-6 top-14 z-10 hidden items-center gap-3 md:right-12 md:top-10 md:flex'
             >
                 <span ref={counterRef} className='font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground tabular-nums'>
                     {activeGroupPosition.group === 'work' ? 'Work' : 'Profile'} {String(activeGroupPosition.index).padStart(2, '0')}
@@ -843,16 +927,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             </div>
 
             <div
-                className={cn('absolute left-0 z-[1] overflow-hidden', isMobile ? 'w-full' : 'w-1/2')}
-                style={{
-                    top: `${layout.titleTopVh}dvh`,
-                    height: `${layout.titleAreaVh}dvh`,
-                    maskImage: MASK_GRADIENT,
-                    WebkitMaskImage: MASK_GRADIENT
-                }}
+                className='reel-titles absolute left-0 z-[1] w-full overflow-clip md:w-1/2'
+                style={{ maskImage: MASK_GRADIENT, WebkitMaskImage: MASK_GRADIENT }}
             >
-                <div ref={titleRevealRef} className='absolute inset-0 opacity-0' style={{ willChange: 'transform, opacity, filter' }}>
-                    <div ref={titleStripRef} className='absolute inset-x-0 top-0 will-change-transform'>
+                <div ref={titleRevealRef} className='absolute inset-0'>
+                    <div ref={titleStripRef} className='reel-title-strip absolute inset-x-0 top-0 will-change-transform'>
                         {RENDERED_ITEMS.map((item, i) => {
                             const isCanonical = i >= N && i < 2 * N
                             const groupPosition = getGroupPosition(folioItems, i % N)
@@ -867,7 +946,9 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     role='button'
                                     tabIndex={isCanonical ? 0 : -1}
                                     aria-hidden={!isCanonical}
+                                    aria-current={isCanonical && i % N === activeIdx % N ? 'true' : undefined}
                                     aria-label={`View ${item.title}`}
+                                    onFocus={() => navigateAndOpen(i, false)}
                                     onClick={() => navigateAndOpen(i)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
@@ -881,14 +962,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     onPointerLeave={() => {
                                         if (hoveredTitleIdxRef.current === i) hoveredTitleIdxRef.current = null
                                     }}
-                                    className={cn(
-                                        'cursor-target flex cursor-pointer items-center rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-foreground/40',
-                                        isMobile ? 'justify-center px-6 text-center' : 'gap-4 pl-8 pr-8 sm:pl-12 lg:pl-20'
-                                    )}
-                                    style={{ height: `${layout.titleSlotVh}dvh` }}
+                                    className='reel-title cursor-target flex cursor-pointer items-center justify-center rounded-lg px-6 text-center outline-none focus-visible:ring-1 focus-visible:ring-foreground/40 md:justify-start md:gap-4 md:pl-12 md:pr-8 md:text-left lg:pl-20'
+                                    style={{ '--title-scale': TITLE_REGISTER[getGroup(item)].scale } as CSSProperties}
                                 >
                                     <div className={cn(profile && 'flex flex-col gap-1')}>
-                                        {profile && <span className='font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground'>Profile · {String(groupPosition.index).padStart(2, '0')}</span>}
+                                        {profile && <span className='font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/65'>Profile · {String(groupPosition.index).padStart(2, '0')}</span>}
                                         <h3 className='whitespace-nowrap leading-none tracking-[-0.015em]'>
                                             {item.title}
                                             {item.descriptor && (
@@ -907,39 +985,26 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             </div>
 
             <div
-                className={cn('absolute overflow-hidden', isMobile ? 'left-0 w-full' : 'right-0 w-1/2')}
-                style={{
-                    top: `${layout.imageWrapperTopVh}dvh`,
-                    height: `${layout.imageWrapperHeightVh}dvh`,
-                    ...(isMobile ? { maskImage: MASK_GRADIENT, WebkitMaskImage: MASK_GRADIENT } : {})
-                }}
+                className='reel-images absolute left-0 w-full overflow-clip md:left-auto md:right-0 md:w-1/2'
             >
-                <div ref={imageRevealRef} className='absolute inset-0 opacity-0' style={{ willChange: 'transform, opacity, filter' }}>
-                    <div
-                        ref={imageStripRef}
-                        className='absolute inset-x-0 top-0 will-change-transform'
-                        style={{ height: `${RENDERED * layout.imagePitchVh}dvh` }}
-                    >
+                <div ref={imageRevealRef} className='absolute inset-0'>
+                    <div ref={imageStripRef} className='reel-image-strip absolute inset-x-0 top-0 will-change-transform'>
                         {RENDERED_ITEMS.map((item, i) => {
-                            const isCanonical = i >= N && i < 2 * N
                             const presentation = getPreviewPresentation(
                                 item,
                                 i,
                                 activeIdx,
                                 settledRenderedIdx,
                                 interactingRenderedIdx,
-                                liveMountEnabled
+                                liveMountEnabled && detailIdx === null && !viewportIsMobile
                             )
 
                             return (
                                 <div
                                     key={i}
-                                    aria-hidden={!isCanonical}
-                                    className='absolute inset-x-0 flex items-center justify-center'
-                                    style={{
-                                        top: `${(RENDERED - 1 - i) * layout.imagePitchVh}dvh`,
-                                        height: `${layout.imagePitchVh}dvh`
-                                    }}
+                                    aria-hidden={i !== activeIdx}
+                                    className='reel-image-slot absolute inset-x-0 flex items-center justify-center'
+                                    style={{ '--slot': RENDERED - 1 - i } as CSSProperties}
                                 >
                                     <div
                                         ref={(el) => {
@@ -948,15 +1013,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                         onClick={() => {
                                             if (interactingRenderedIdx === null) navigateAndOpen(i)
                                         }}
-                                        onPointerEnter={() => {
-                                            isHoveringActiveRef.current = true
-                                        }}
-                                        onPointerLeave={() => {
-                                            isHoveringActiveRef.current = false
-                                        }}
-                                        className='relative overflow-hidden rounded-2xl bg-muted'
-                                        style={{ height: `${layout.imageHeightVh}dvh`, aspectRatio: '4 / 5', willChange: 'transform, opacity' }}
+                                        className='reel-card cursor-target relative overflow-hidden rounded-2xl bg-muted'
+                                        data-kind={item.kind}
+                                        style={{ opacity: i === LANDING_POS ? 1 : 0.78, aspectRatio: '4 / 5', willChange: 'transform, opacity' }}
                                     >
+                                        <div className='h-full' inert={i !== activeIdx || detailIdx !== null}>
                                         <FolioPreview
                                             item={item}
                                             presentation={presentation}
@@ -965,11 +1026,12 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             renderedIndex={i}
                                             activeIndex={activeIdx}
                                             settledIndex={settledRenderedIdx}
-                                            liveMountEnabled={liveMountEnabled}
+                                            liveMountEnabled={liveMountEnabled && detailIdx === null}
                                             onInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'enter', renderedIndex: i }))}
                                             onExitInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'exit' }))}
                                             onOpenDetails={() => navigateAndOpen(i)}
                                         />
+                                        </div>
                                     </div>
                                 </div>
                             )
@@ -978,14 +1040,24 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 </div>
             </div>
 
-            <div
-                ref={clickMeRef}
-                aria-hidden
-                className='pointer-events-none absolute left-0 top-0 z-20 grid h-[76px] w-[76px] place-items-center rounded-full border border-white/55'
-                style={{ opacity: 0, transition: 'opacity 260ms ease-out', mixBlendMode: 'difference', willChange: 'transform, opacity' }}
-            >
-                <span className='text-[9px] font-medium uppercase tracking-[0.32em] text-white'>View</span>
-            </div>
+            {isMobile && (
+                <>
+                    <MobileGallery
+                        projects={PROJECT_ITEMS}
+                        profile={PROFILE_ITEM}
+                        selectedProjectIndex={mobileSelectedProjectIndex < 0 ? null : mobileSelectedProjectIndex}
+                        resumeUrl={RESUME_ITEM.pdfUrl}
+                        githubUrl={GITHUB_ITEM.profileUrl}
+                        reducedMotion={prefersReducedMotion}
+                        onProjectChange={selectMobileProject}
+                        onShowProfile={() => selectMobileLogicalItem(ABOUT_LOGICAL_IDX)}
+                        onOpenDetails={openMobileDetails}
+                        onOpenContact={() => setContactOpen(true)}
+                        onFocusTarget={target => { mobileFocusRef.current = target }}
+                    />
+                    <ContactSheet open={contactOpen} onOpenChange={setContactOpen} />
+                </>
+            )}
 
             {detailItem &&
                 (() => {
@@ -995,7 +1067,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                         <button
                             data-detail-reveal
                             type='button'
-                            onClick={handleClose}
+                            onClick={event => {
+                                event.stopPropagation()
+                                handleClose()
+                            }}
                             className='cursor-target group inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
                         >
                             <ArrowLeft className='size-4 transition-transform group-hover:-translate-x-0.5' />
@@ -1115,10 +1190,18 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                     )
 
                     return (
-                        <div ref={detailRef} className='absolute inset-0 z-30' onClick={handleClose}>
+                        <DialogPrimitive.Root open onOpenChange={open => { if (!open) handleClose() }}>
+                        <DialogPrimitive.Portal container={sectionRef}>
+                        <DialogPrimitive.Popup
+                            ref={setDetailElement}
+                            finalFocus={() => viewportIsMobile ? mobileFocusRef.current : titleRefs.current[activeIdxRef.current]}
+                            aria-labelledby='detail-title'
+                            className='absolute inset-0 z-30 m-0 h-full max-h-none w-full max-w-none border-0 bg-transparent p-0 text-foreground outline-none'
+                            onClick={handleClose}
+                        >
                             <div data-detail-scrim className='absolute inset-0 bg-background' style={{ opacity: 0 }} />
 
-                            {isMobile ? (
+                            {viewportIsMobile ? (
                                 <div
                                     data-no-wheel
                                     onClick={(e) => e.stopPropagation()}
@@ -1130,6 +1213,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                                         <h2
                                             ref={detailTitleRef}
+                                            id='detail-title'
                                             className='leading-none tracking-[-0.015em] text-foreground'
                                             style={{
                                                 fontSize: `${MOBILE_LAYOUT.titleFontVhMax * 1.1}dvh`,
@@ -1182,6 +1266,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                                         <h2
                                             ref={detailTitleRef}
+                                            id='detail-title'
                                             className='mt-8 whitespace-nowrap leading-none tracking-[-0.015em] text-foreground'
                                             style={{
                                                 fontSize: 'clamp(2.4rem, 7dvh, 5rem)',
@@ -1238,7 +1323,9 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     </div>
                                 </>
                             )}
-                        </div>
+                        </DialogPrimitive.Popup>
+                        </DialogPrimitive.Portal>
+                        </DialogPrimitive.Root>
                     )
                 })()}
         </section>

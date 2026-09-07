@@ -14,18 +14,6 @@
     transform: translate(-50%, -50%);
 }
 
-.target-cursor-dot {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 4px;
-    height: 4px;
-    background: #fff;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    will-change: transform;
-}
-
 .target-cursor-corner {
     position: absolute;
     left: 50%;

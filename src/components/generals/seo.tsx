@@ -8,7 +8,7 @@ import { siteConfig } from '@/constants/site'
 export const Seo: FC<SeoProps> = ({
     title,
     description = siteConfig.description,
-    ogImage
+    ogImage = `${siteConfig.url}/previews/tanglaw.jpg`
 }): ReactNode => {
     const pageTitle = title ? `${title} | ${siteConfig.name}` : siteConfig.name
 
@@ -19,6 +19,7 @@ export const Seo: FC<SeoProps> = ({
             </title>
 
             <meta name='description' content={description} />
+            <link rel='canonical' href={siteConfig.url} />
             <meta property='og:title' content={pageTitle} />
             <meta property='og:description' content={description} />
             <meta property='og:type' content='website' />
@@ -28,6 +29,8 @@ export const Seo: FC<SeoProps> = ({
             <meta name='twitter:description' content={description} />
 
             {ogImage && <meta property='og:image' content={ogImage} />}
+            {ogImage && <meta property='og:image:alt' content='Bennett Payoyo — selected projects and student profile' />}
+            {ogImage && <meta name='twitter:image' content={ogImage} />}
         </Head>
     )
 }

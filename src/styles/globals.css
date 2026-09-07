@@ -190,3 +190,68 @@
         @apply font-sans;
     }
 }
+
+/* The reel must have the same geometry before and after hydration. */
+.folio-reel {
+    --title-top: var(--desktop-title-top);
+    --title-area: var(--desktop-title-area);
+    --title-slot: var(--desktop-title-slot);
+    --title-font: var(--desktop-title-font);
+    --title-offset: var(--desktop-title-offset);
+    --image-top: var(--desktop-image-top);
+    --image-area: var(--desktop-image-area);
+    --image-height: var(--desktop-image-height);
+    --image-pitch: var(--desktop-image-pitch);
+    --image-offset: var(--desktop-image-offset);
+}
+.reel-titles { top: var(--title-top); height: var(--title-area); }
+.reel-title-strip { transform: translate3d(0, var(--title-offset), 0); }
+.reel-title { height: var(--title-slot); }
+.reel-title h3 {
+    font-size: calc(var(--title-font) * var(--title-scale));
+    transform-origin: left center;
+}
+.reel-images { top: var(--image-top); height: var(--image-area); }
+.reel-image-strip { transform: translate3d(0, var(--image-offset), 0); }
+.reel-image-slot { top: calc(var(--slot) * var(--image-pitch)); height: var(--image-pitch); }
+.reel-card { height: var(--image-height); max-width: calc(100% - 32px); }
+@media (min-width: 768px) {
+    .reel-card[data-kind='project'] { height: calc(var(--image-height) * 1.05); }
+}
+@media (max-width: 767px) {
+    .reel-titles,
+    .reel-images { display: none; }
+    .folio-reel {
+        --title-top: var(--mobile-title-top);
+        --title-area: var(--mobile-title-area);
+        --title-slot: var(--mobile-title-slot);
+        --title-font: var(--mobile-title-font);
+        --title-offset: var(--mobile-title-offset);
+        --image-top: var(--mobile-image-top);
+        --image-area: var(--mobile-image-area);
+        --image-height: var(--mobile-image-height);
+        --image-pitch: var(--mobile-image-pitch);
+        --image-offset: var(--mobile-image-offset);
+    }
+    .reel-title h3 { transform-origin: center; }
+    .reel-images { mask-image: linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%); }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+    .mobile-profile-layout,
+    .mobile-project-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+        align-items: start;
+        gap: 1rem;
+    }
+    .mobile-profile-image,
+    .mobile-project-media {
+        max-height: calc(100dvh - 9rem);
+    }
+    .mobile-profile-copy,
+    .mobile-project-caption {
+        min-width: 0;
+        padding-top: 0;
+    }
+}
