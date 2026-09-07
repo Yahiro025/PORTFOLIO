@@ -251,6 +251,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                     src={item.posterUrl}
                                     alt=''
                                     aria-hidden
+                                    loading='lazy'
+                                    decoding='async'
+                                    fetchPriority='low'
                                     className='absolute inset-0 h-full w-full object-cover object-top'
                                 />
                             )}
@@ -267,7 +270,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         </div>
                     )}
 
-                    {!interactive && (
+                    {mode === 'reel' && !interactive && (
                         <Button
                             type='button'
                             variant='overlay'
@@ -304,7 +307,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         <ContactLanyard open={contactOpen} onOpenChange={setContactOpen} />
                     </div>
                 ) : (
-                    <picture className='block h-[59%] w-full shrink-0'>
+                    <picture className={cn('block w-full shrink-0', mode === 'reel' ? 'h-[46%]' : 'h-[59%]')}>
                         <source
                             type='image/webp'
                             srcSet={PROFILE_IMAGE.srcSet}
@@ -321,9 +324,10 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         />
                     </picture>
                 )}
-                <div className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto border-t border-border p-6', mode === 'detail' && 'justify-center')}>
+                <div className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-border', mode === 'detail' ? 'gap-4 p-6 justify-center' : 'gap-3 p-4')}>
                     <div>
                         <h4 className='text-lg font-semibold uppercase tracking-tight text-foreground'>Bennett Payoyo</h4>
+                        <span className='mt-1 block text-sm text-foreground/70 md:hidden'>2nd year BSCS · PUP</span>
                         <span className='mt-1 block font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>{item.tagline}</span>
                     </div>
 
@@ -396,7 +400,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                 <>
                     <div className='flex items-start gap-4'>
                         <Avatar className='size-16 shrink-0 after:hidden'>
-                            <AvatarImage src={github.avatarUrl} alt={github.name} />
+                            <AvatarImage src={github.avatarUrl} alt={github.name} loading='lazy' />
                             <AvatarFallback>{github.login.slice(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className='min-w-0'>

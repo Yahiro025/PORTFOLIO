@@ -4,7 +4,7 @@ import { validatePortfolioItems } from '@/lib/portfolio'
 export const PROFILE_IMAGE = {
     src: '/profile-640.webp',
     srcSet: '/profile-480.webp 480w, /profile-640.webp 640w, /profile-1080.webp 1080w',
-    sizes: '(max-width: 768px) 80vw, 35vw',
+    sizes: '(max-width: 767px) 30.4dvh, 48dvh',
     width: 640,
     height: 853,
     fallbackSrc: '/profile.png'
@@ -162,16 +162,16 @@ export const DESKTOP_LAYOUT: FolioLayout = {
 }
 
 export const MOBILE_LAYOUT: FolioLayout = {
-    titleAreaVh: 50,
+    titleAreaVh: 43,
     titleTopVh: 0,
-    titleMidVh: 45,
-    titleSlotVh: 50 / 5,
+    titleMidVh: 35,
+    titleSlotVh: 43 / 5,
     titleVisible: 5,
     titleFontVhMax: 2.6,
     titleFontVhMin: 2.5,
-    imageWrapperTopVh: 50,
-    imageWrapperHeightVh: 50,
-    imageWrapperMidViewportVh: 69,
+    imageWrapperTopVh: 43,
+    imageWrapperHeightVh: 57,
+    imageWrapperMidViewportVh: 60,
     imageHeightVh: 38,
     imageGapVh: 4,
     imagePitchVh: 42,

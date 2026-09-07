@@ -1,27 +1,118 @@
 import type { FC, ReactNode } from 'react'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
+
+import { Check, Copy, Mail, Linkedin } from 'lucide-react'
 
 import type { FrontRegion } from '@/components/landing/lanyard'
 
 import {
     Dialog,
-    DialogContent
+    DialogContent,
+    DialogDescription,
+    DialogTitle
 } from '@/components/ui/dialog'
 
 const Lanyard = dynamic(() => import('@/components/landing/lanyard'), { ssr: false })
 
-const CONTACT_EMAIL = 'bennettpayoyo3.14@gmail.com'
+export const CONTACT_EMAIL = 'bennettpayoyo3.14@gmail.com'
 const CONTACT_LINKEDIN = 'in/bennett-payoyo'
 const CONTACT_WHATSAPP_NUMBER = '09913800307'
 const CONTACT_VIBER_NUMBER = '09913800307'
+const CONTACT_FONT_FAMILY = 'Geist, "Geist Fallback", ui-sans-serif, system-ui, sans-serif'
 
-const CONTACT_LINKS: Record<string, string> = {
-    email: `https://mail.google.com/mail/?view=cm&fs=1&to=${CONTACT_EMAIL}`,
+export const CONTACT_LINKS: Record<string, string> = {
+    email: `mailto:${CONTACT_EMAIL}`,
     linkedin: 'https://www.linkedin.com/in/bennett-payoyo/',
     whatsapp: `https://wa.me/63${CONTACT_WHATSAPP_NUMBER.slice(1)}`,
     viber: `viber://chat?number=%2B63${CONTACT_VIBER_NUMBER.slice(1)}`
+}
+
+interface ContactSheetProps {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+}
+
+export const ContactSheet: FC<ContactSheetProps> = ({ open, onOpenChange }): ReactNode => {
+    const [copied, setCopied] = useState(false)
+    const [copyFailed, setCopyFailed] = useState(false)
+
+    const copyEmail = async () => {
+        setCopyFailed(false)
+
+        try {
+            if (!navigator.clipboard) throw new Error('Clipboard unavailable')
+            await navigator.clipboard.writeText(CONTACT_EMAIL)
+            setCopied(true)
+            window.setTimeout(() => setCopied(false), 1800)
+        } catch {
+            setCopied(false)
+            setCopyFailed(true)
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent
+                className='w-[calc(100%-2rem)] max-w-md gap-6 rounded-[1.5rem] border-0 bg-foreground p-6 text-background shadow-2xl sm:p-8'
+                style={{ fontFamily: CONTACT_FONT_FAMILY }}
+            >
+                <div className='flex flex-col gap-3 pr-8'>
+                    <DialogTitle className='text-3xl font-semibold tracking-tight text-background sm:text-4xl' style={{ fontFamily: CONTACT_FONT_FAMILY }}>
+                        Let&apos;s work together.
+                    </DialogTitle>
+                    <DialogDescription className='text-base leading-relaxed text-background/70' style={{ fontFamily: CONTACT_FONT_FAMILY }}>
+                        For internships, collaborations, and project conversations.
+                    </DialogDescription>
+                </div>
+
+                <div className='flex items-center gap-3 rounded-xl border border-background/25 bg-background/10 p-4'>
+                    <code className='min-w-0 flex-1 select-all break-all text-sm text-background sm:text-base'>{CONTACT_EMAIL}</code>
+                    <button
+                        type='button'
+                        onClick={copyEmail}
+                        aria-label='Copy email address'
+                        className='grid size-11 shrink-0 place-items-center rounded-lg border border-background/30 text-background transition-colors hover:bg-background/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background'
+                    >
+                        <Copy className='size-5' />
+                    </button>
+                </div>
+
+                <div aria-live='polite' className='min-h-5 text-sm text-background/70'>
+                    {copied && <span className='inline-flex items-center gap-2'><Check className='size-4' />Email copied</span>}
+                    {copyFailed && 'Copy is unavailable. Select the email above and copy it.'}
+                </div>
+
+                <div className='flex flex-col gap-3'>
+                    <button
+                        type='button'
+                        onClick={copyEmail}
+                        className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-background/60 px-4 text-sm font-semibold text-background transition-colors hover:bg-background/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background'
+                    >
+                        <Copy className='size-4' />
+                        {copied ? 'Email copied' : 'Copy email'}
+                    </button>
+                    <a
+                        href={CONTACT_LINKS.email}
+                        className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-background px-4 text-sm font-semibold text-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background'
+                    >
+                        <Mail className='size-4' />
+                        Email Bennett
+                    </a>
+                    <a
+                        href={CONTACT_LINKS.linkedin}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='inline-flex min-h-11 items-center justify-center gap-2 text-sm font-medium text-background underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background'
+                    >
+                        <Linkedin className='size-4' />
+                        LinkedIn
+                    </a>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
 }
 
 const CARD_ROWS: { id: string; label: string; value: string }[] = [
@@ -118,6 +209,7 @@ export const ContactLanyard: FC<ContactLanyardProps> = ({ open, onOpenChange }):
                 showCloseButton
                 className='h-[85vh] max-h-[820px] w-[760px] max-w-[95vw] overflow-visible bg-transparent p-0 shadow-none ring-0 sm:max-w-[95vw]'
             >
+                <DialogTitle className='sr-only'>Contact Bennett Payoyo</DialogTitle>
                 <Lanyard
                     position={[0, 0, 11]}
                     gravity={[0, -40, 0]}
@@ -128,6 +220,19 @@ export const ContactLanyard: FC<ContactLanyardProps> = ({ open, onOpenChange }):
                         if (url) window.open(url, '_blank', 'noopener,noreferrer')
                     }}
                 />
+                <nav aria-label='Contact links' className='absolute inset-x-2 bottom-0 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background/95 p-2 shadow-sm sm:grid-cols-4'>
+                    {CARD_ROWS.map(({ id, label }) => (
+                        <a
+                            key={id}
+                            href={CONTACT_LINKS[id]}
+                            target={id === 'linkedin' || id === 'whatsapp' ? '_blank' : undefined}
+                            rel='noreferrer'
+                            className='cursor-target rounded-lg px-3 py-2 text-center text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2'
+                        >
+                            {label}
+                        </a>
+                    ))}
+                </nav>
             </DialogContent>
         </Dialog>
     )

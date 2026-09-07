@@ -5,11 +5,14 @@ import {
     getGroup,
     getGroupPosition,
     getMotionPolicy,
+    getNavigationPosition,
+    getProjectIdFromSearch,
     getPreviewPresentation,
     getReelOffsets,
     reduceInteraction,
     shouldMountProjectIframe,
     shouldMountResumePdf,
+    snapReelPosition,
     TITLE_REGISTER,
     validatePortfolioItems
 } from './portfolio.ts'
@@ -146,12 +149,30 @@ test('reduced motion disables automatic and long entrance motion', () => {
     })
 })
 
-test('normal motion preserves the current entrance and FLIP timing', () => {
+test('normal motion leaves the landing row still and preserves detail motion', () => {
     assert.deepEqual(getMotionPolicy(false), {
-        autoPass: true,
+        autoPass: false,
         blurEntrance: true,
         sharedElementDuration: 0.95
     })
+})
+
+test('navigation snaps moving rows and wraps through the nearest copy', () => {
+    assert.equal(getNavigationPosition(13.3, 12, 8), 12)
+    assert.equal(getNavigationPosition(13.7, 13, 8), 13)
+    assert.equal(getNavigationPosition(15.8, 8, 8), 16)
+    assert.equal(getNavigationPosition(8.2, 15, 8), 7)
+    assert.equal(getNavigationPosition(12.2, 20, 8), 12)
+    assert.equal(snapReelPosition(13.1, 1), 14)
+    assert.equal(snapReelPosition(12.9, -1), 12)
+    assert.equal(snapReelPosition(13, 1), 13)
+})
+
+test('project deep links read one existing project id from the query string', () => {
+    assert.equal(getProjectIdFromSearch('?project=bantayog'), 'bantayog')
+    assert.equal(getProjectIdFromSearch('?project=%20scholaraid%20'), 'scholaraid')
+    assert.equal(getProjectIdFromSearch('?project='), null)
+    assert.equal(getProjectIdFromSearch('?section=work'), null)
 })
 
 test('portfolio item ids must be unique', () => {

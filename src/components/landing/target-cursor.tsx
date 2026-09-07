@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { gsap } from 'gsap'
 
@@ -56,7 +56,6 @@ export const TargetCursor = ({
     const cursorRef = useRef<HTMLDivElement>(null)
     const cornersRef = useRef<NodeListOf<HTMLDivElement> | null>(null)
     const spinTl = useRef<gsap.core.Timeline | null>(null)
-    const dotRef = useRef<HTMLDivElement>(null)
     const containingBlockRef = useRef<HTMLElement | null>(null)
 
     const isActiveRef = useRef(false)
@@ -64,15 +63,13 @@ export const TargetCursor = ({
     const tickerFnRef = useRef<(() => void) | null>(null)
     const activeStrengthRef = useRef({ current: 0 })
 
-    const isMobile = useMemo(() => {
-        if (typeof window === 'undefined') return false
-        const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-        const isSmallScreen = window.innerWidth <= 768
-        const opera = (window as Window & { opera?: string }).opera
-        const userAgent = navigator.userAgent || navigator.vendor || opera || ''
-        const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i
-        const isMobileUserAgent = mobileRegex.test(userAgent.toLowerCase())
-        return (hasTouchScreen && isSmallScreen) || isMobileUserAgent
+    const [isMobile, setIsMobile] = useState(true)
+    useEffect(() => {
+        const media = window.matchMedia('(pointer: coarse), (prefers-reduced-motion: reduce)')
+        const update = () => setIsMobile(media.matches)
+        update()
+        media.addEventListener('change', update)
+        return () => media.removeEventListener('change', update)
     }, [])
 
     // Default/idle bracket size (also the CSS default in target-cursor.css).
@@ -119,6 +116,7 @@ export const TargetCursor = ({
             x: x - offsetX,
             y: y - offsetY,
             duration: 0.1,
+            overwrite: 'auto',
             ease: 'power3.out'
         })
     }, [])
@@ -137,6 +135,7 @@ export const TargetCursor = ({
         containingBlockRef.current = getContainingBlock(cursor)
         const getOffset = () => getContainingBlockOffset(containingBlockRef.current)
 
+        let pointer = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
         let activeTarget: Element | null = null
         let currentLeaveHandler: (() => void) | null = null
         let resumeTimeout: ReturnType<typeof setTimeout> | null = null
@@ -167,7 +166,29 @@ export const TargetCursor = ({
 
         createSpinTimeline()
 
+        const measureTarget = (target: Element) => {
+            const rect = (target.querySelector('h3') ?? target).getBoundingClientRect()
+            const { cornerSize, padding } = activeMetricsRef.current
+            const { x, y } = getOffset()
+            return [
+                { x: rect.left - padding - x, y: rect.top - padding - y },
+                { x: rect.right + padding - cornerSize - x, y: rect.top - padding - y },
+                { x: rect.right + padding - cornerSize - x, y: rect.bottom + padding - cornerSize - y },
+                { x: rect.left - padding - x, y: rect.bottom + padding - cornerSize - y }
+            ]
+        }
+
         const tickerFn = () => {
+            // Reel movement uses transforms, so there is no native scroll event.
+            if (activeTarget) {
+                const hit = document.elementFromPoint(pointer.x, pointer.y)
+                if (!activeTarget.isConnected || hit?.closest(targetSelector) !== activeTarget) {
+                    currentLeaveHandler?.()
+                    if (hit) enterHandler({ target: hit } as unknown as MouseEvent)
+                    return
+                }
+                targetCornerPositionsRef.current = measureTarget(activeTarget)
+            }
             if (!targetCornerPositionsRef.current || !cursorRef.current || !cornersRef.current) {
                 return
             }
@@ -203,7 +224,10 @@ export const TargetCursor = ({
 
         tickerFnRef.current = tickerFn
 
-        const moveHandler = (e: MouseEvent) => moveCursor(e.clientX, e.clientY)
+        const moveHandler = (e: MouseEvent) => {
+            pointer = { x: e.clientX, y: e.clientY }
+            moveCursor(e.clientX, e.clientY)
+        }
         window.addEventListener('mousemove', moveHandler)
 
         const scrollHandler = () => {
@@ -222,14 +246,10 @@ export const TargetCursor = ({
         window.addEventListener('scroll', scrollHandler, { passive: true })
 
         const mouseDownHandler = () => {
-            if (!dotRef.current) return
-            gsap.to(dotRef.current, { scale: 0.7, duration: 0.3 })
             gsap.to(cursorRef.current, { scale: 0.9, duration: 0.2 })
         }
 
         const mouseUpHandler = () => {
-            if (!dotRef.current) return
-            gsap.to(dotRef.current, { scale: 1, duration: 0.3 })
             gsap.to(cursorRef.current, { scale: 1, duration: 0.2 })
         }
 
@@ -259,6 +279,7 @@ export const TargetCursor = ({
 
             activeTarget = target
             const corners = Array.from(cornersRef.current)
+            gsap.set(corners, { xPercent: 0, yPercent: 0 })
             corners.forEach(corner => gsap.killTweensOf(corner, 'x,y'))
 
             gsap.killTweensOf(cursorRef.current, 'rotation')
@@ -271,20 +292,11 @@ export const TargetCursor = ({
                     duration: 0.15,
                     ease: 'power2.out'
                 })
-                if (dotRef.current) {
-                    gsap.to(dotRef.current, {
-                        backgroundColor: cursorColorOnTarget,
-                        duration: 0.15,
-                        ease: 'power2.out'
-                    })
-                }
             }
 
             // Some targets are a large padded hit area around a smaller
             // visible label (e.g. the reel's title rows) — hug the visible
             // text's own bounds there instead of the full clickable area.
-            const visualEl = target.querySelector('h3') ?? target
-            const rect = visualEl.getBoundingClientRect()
             const { borderWidth, cornerSize, padding } = getCornerMetrics(target)
             activeMetricsRef.current = { borderWidth, cornerSize, padding }
             gsap.to(corners, {
@@ -294,16 +306,10 @@ export const TargetCursor = ({
                 duration: hoverDuration,
                 ease: 'power2.out'
             })
-            const { x: offsetX, y: offsetY } = getOffset()
             const cursorX = gsap.getProperty(cursorRef.current, 'x') as number
             const cursorY = gsap.getProperty(cursorRef.current, 'y') as number
 
-            targetCornerPositionsRef.current = [
-                { x: rect.left - padding - offsetX, y: rect.top - padding - offsetY },
-                { x: rect.right + padding - cornerSize - offsetX, y: rect.top - padding - offsetY },
-                { x: rect.right + padding - cornerSize - offsetX, y: rect.bottom + padding - cornerSize - offsetY },
-                { x: rect.left - padding - offsetX, y: rect.bottom + padding - cornerSize - offsetY }
-            ]
+            targetCornerPositionsRef.current = measureTarget(target)
 
             isActiveRef.current = true
             gsap.ticker.add(tickerFnRef.current!)
@@ -337,13 +343,6 @@ export const TargetCursor = ({
                         duration: 0.15,
                         ease: 'power2.out'
                     })
-                    if (dotRef.current) {
-                        gsap.to(dotRef.current, {
-                            backgroundColor: cursorColor,
-                            duration: 0.15,
-                            ease: 'power2.out'
-                        })
-                    }
                 }
 
                 if (cornersRef.current) {
@@ -429,6 +428,8 @@ export const TargetCursor = ({
                 cleanupTarget(activeTarget)
             }
 
+            if (resumeTimeout) clearTimeout(resumeTimeout)
+            gsap.killTweensOf([cursor, ...cursor.querySelectorAll('*'), activeStrengthRef.current])
             spinTl.current?.kill()
             document.body.style.cursor = originalCursor
 
@@ -466,7 +467,6 @@ export const TargetCursor = ({
 
     return createPortal(
         <div ref={cursorRef} className='target-cursor-wrapper'>
-            <div ref={dotRef} className='target-cursor-dot' style={{ backgroundColor: cursorColor }} />
             <div className='target-cursor-corner corner-tl' style={{ borderColor: cursorColor }} />
             <div className='target-cursor-corner corner-tr' style={{ borderColor: cursorColor }} />
             <div className='target-cursor-corner corner-br' style={{ borderColor: cursorColor }} />

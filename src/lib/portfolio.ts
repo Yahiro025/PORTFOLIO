@@ -56,6 +56,27 @@ export const getReelOffsets = (
     previewPx: layout.imageOffsetPx
 })
 
+// Navigate from a moving row to the nearest exact copy of the requested item.
+export const getNavigationPosition = (position: number, index: number, count: number): number => {
+    const current = Math.round(position)
+    let delta = ((index % count) + count) % count - ((current % count) + count) % count
+
+    if (delta > count / 2) delta -= count
+    if (delta < -count / 2) delta += count
+
+    return current + delta
+}
+
+export const getProjectIdFromSearch = (search: string): string | null => {
+    const id = new URLSearchParams(search).get('project')?.trim()
+
+    return id || null
+}
+
+export const snapReelPosition = (position: number, direction: number): number => direction > 0
+    ? Math.ceil(position - 0.0001)
+    : direction < 0 ? Math.floor(position + 0.0001) : Math.round(position)
+
 export const getPreviewPresentation = (
     item: PortfolioItem,
     renderedIndex: number,
@@ -107,7 +128,7 @@ export const reduceInteraction = (
 
 export const getMotionPolicy = (reduced: boolean): MotionPolicy => reduced
     ? { autoPass: false, blurEntrance: false, sharedElementDuration: 0 }
-    : { autoPass: true, blurEntrance: true, sharedElementDuration: 0.95 }
+    : { autoPass: false, blurEntrance: true, sharedElementDuration: 0.95 }
 
 export const validatePortfolioItems = (items: PortfolioItem[]): PortfolioItem[] => {
     const ids = new Set<string>()
