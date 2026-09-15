@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { FC, KeyboardEvent, ReactNode } from 'react'
 import type { GitHubContributionDay, GitHubSnapshot, PortfolioItem } from '@/types'
 
 import { useState } from 'react'
@@ -129,20 +129,12 @@ const AboutPanel = ({ item }: { item: AboutItem }): ReactNode => (
             <p className='absolute left-9 top-7 z-10 font-mono text-[10px] uppercase tracking-[0.16em] text-[#8a8a86]'>
                 FULL-STACK SOFTWARE ENGINEERING
             </p>
-            <p className='absolute right-[-6rem] top-7 z-10 text-right text-lg leading-tight text-[#8a8a86]'>
-                Build. Study the system.
-                <br />
-                Ship. Repeat.
-            </p>
         </div>
 
         <article className='relative z-10 mx-auto min-h-[38rem] w-full max-w-[35rem] rounded-[8px] border border-[#535353] bg-[#0f0f0f] p-8 lg:absolute lg:left-[5rem] lg:top-[1.4rem] lg:mx-0 lg:h-[38.125rem] lg:rotate-[-1.5deg]'>
             <div className='relative h-[18.75rem] overflow-hidden rounded-[4px] border border-[#2c2c2c] bg-[#181818]'>
                 <Portrait item={item} />
                 <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181818]/80 via-transparent to-transparent' />
-                <p className='absolute bottom-3 left-5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#555552]'>
-                    PROFILE IMAGE · {PROFILE_IMAGE.src}
-                </p>
             </div>
 
             <h2 className='mt-6 text-[1.7rem] font-medium leading-none tracking-[-0.04em] text-[#f2f2f0]'>
@@ -169,8 +161,8 @@ const AboutPanel = ({ item }: { item: AboutItem }): ReactNode => (
 
 const ResumePanel = ({ item }: { item: ResumeItem }): ReactNode => (
     <div className='relative min-h-[43rem]'>
-        <div className='pointer-events-none absolute left-[14%] top-0 hidden h-[42rem] w-[65%] rotate-[-3.2deg] rounded-[5px] border border-[#3b3b3b] bg-[#1a1a1a] lg:block'>
-            <p className='absolute right-[-1rem] top-8 text-right text-[2.15rem] font-medium leading-none text-[#777773]'>
+        <div aria-hidden='true' className='pointer-events-none absolute left-[12%] top-0 hidden h-[42rem] w-[62%] rotate-[-3.2deg] overflow-hidden rounded-[5px] border border-[#3b3b3b] bg-[#1a1a1a] lg:block'>
+            <p className='absolute right-6 top-8 text-right text-[1.9rem] font-medium leading-[1.05] text-[#636360]/80'>
                 EXPERIENCE
                 <br />
                 PROJECTS
@@ -349,9 +341,9 @@ const GitHubPanel = ({
             <article className='relative z-10 mx-auto min-h-[34.25rem] w-full max-w-[44rem] rounded-[7px] border border-[#535353] bg-[#0f0f0f] lg:absolute lg:left-[2rem] lg:top-[1.25rem] lg:mx-0 xl:left-[4rem]'>
                 <div className='flex h-12 items-center gap-4 border-b border-[#303030] px-5'>
                     <div className='flex gap-2' aria-hidden='true'>
-                        <span className='size-1.5 rounded-full bg-[#404040]' />
-                        <span className='size-1.5 rounded-full bg-[#404040]' />
-                        <span className='size-1.5 rounded-full bg-[#404040]' />
+                        <span className='size-1.5 rounded-full bg-[#FF5F57]/60' />
+                        <span className='size-1.5 rounded-full bg-[#FEBC2E]/60' />
+                        <span className='size-1.5 rounded-full bg-[#28C840]/60' />
                     </div>
                     <span className='font-mono text-[10px] text-[#f2f2f0]'>@{login}</span>
                     <span className='ml-auto font-mono text-[9px] uppercase tracking-[0.12em] text-[#8a8a86]'>LIVE PUBLIC ACTIVITY</span>
@@ -492,11 +484,35 @@ export const ProfileReel: FC<ProfileReelProps> = ({
             <div className='relative z-10 grid min-h-[100dvh] grid-cols-1 gap-12 px-6 pb-28 pt-32 sm:px-10 lg:grid-cols-[minmax(24rem,35vw)_minmax(0,1fr)] lg:gap-0 lg:px-0 lg:pb-12 lg:pt-20'>
                 <nav className='pt-10 lg:pl-[5.5rem] lg:pt-24' aria-label='Profile states'>
                     <p className='font-mono text-[10px] uppercase tracking-[0.16em] text-[#8a8a86]'>PROFILE</p>
-                    <div className='mt-10 flex flex-col gap-8' role='tablist' aria-label='Profile states'>
+                    <div
+                        className='mt-10 flex flex-col gap-8'
+                        role='tablist'
+                        aria-label='Profile states'
+                        aria-orientation='vertical'
+                    >
                         {profileItems.map((item, index) => {
                             const isActive = item.id === activeItem.id
                             const tabId = `profile-tab-${item.id}`
                             const panelId = `profile-panel-${item.id}`
+
+                            const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+                                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+
+                                const nextIndex = event.key === 'ArrowDown'
+                                    ? index + 1
+                                    : index - 1
+
+                                // Let the window-level reel handler process profile boundaries.
+                                if (nextIndex < 0 || nextIndex >= profileItems.length) return
+
+                                event.preventDefault()
+                                event.stopPropagation()
+
+                                const nextItem = profileItems[nextIndex]
+
+                                selectProfile(nextItem)
+                                document.getElementById(`profile-tab-${nextItem.id}`)?.focus()
+                            }
 
                             return (
                                 <button
@@ -506,7 +522,9 @@ export const ProfileReel: FC<ProfileReelProps> = ({
                                     role='tab'
                                     aria-selected={isActive}
                                     aria-controls={panelId}
+                                    tabIndex={isActive ? 0 : -1}
                                     onClick={() => selectProfile(item)}
+                                    onKeyDown={handleTabKeyDown}
                                     className='cursor-target group grid grid-cols-[1.9rem_1px_minmax(0,1fr)] items-start gap-x-5 text-left outline-none focus-visible:ring-1 focus-visible:ring-[#f2f2f0]/50'
                                 >
                                     <span className={cn('pt-3 font-mono text-[13px]', isActive ? 'text-[#f2f2f0]' : 'text-[#8a8a86]')}>

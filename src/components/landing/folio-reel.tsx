@@ -286,25 +286,11 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
 
                 if (!el) continue
 
-                const dist = Math.abs(i - next)
-                let opacity: number
-                let scale: number
+                const distance = Math.abs(i - next)
+                const visibility = Math.max(0, 1 - distance)
 
-                if (dist < 1) {
-                    const t = 1 - dist
-                    opacity = 0.78 + 0.22 * t
-                    scale = 0.93 + 0.07 * t
-                } else if (dist < 2) {
-                    const t = 1 - (dist - 1)
-                    opacity = 0.18 + 0.6 * t
-                    scale = 0.84 + 0.09 * t
-                } else {
-                    opacity = 0.18
-                    scale = 0.84
-                }
-
-                el.style.opacity = opacity.toFixed(3)
-                el.style.transform = `scale(${scale.toFixed(4)})`
+                el.style.opacity = visibility.toFixed(3)
+                el.style.transform = `scale(${(0.93 + 0.07 * visibility).toFixed(4)})`
             }
 
             for (let i = 0; i < RENDERED; i++) {
@@ -1086,10 +1072,13 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                             onClick={() => {
                                                 if (interactingRenderedIdx === null) navigateAndOpen(i)
                                             }}
-                                            className='reel-card cursor-target relative overflow-hidden rounded-[3px] border border-[#3b3b3b] bg-muted shadow-[0_20px_80px_rgba(0,0,0,0.45)]'
+                                            className={cn(
+                                                'reel-card relative overflow-hidden rounded-[3px] border border-[#3b3b3b] bg-muted shadow-[0_20px_80px_rgba(0,0,0,0.45)]',
+                                                i === activeIdx ? 'cursor-target' : 'pointer-events-none'
+                                            )}
                                             data-kind={item.kind}
                                             style={{
-                                                opacity: i === INITIAL_POS ? 1 : 0.78,
+                                                opacity: i === INITIAL_POS ? 1 : 0,
                                                 aspectRatio: item.kind === 'project' ? '16 / 9' : '4 / 5',
                                                 height: item.kind === 'project' ? 'min(47dvh, calc((59vw - 64px) * 0.5625))' : 'min(60dvh, 540px)',
                                                 maxWidth: 'calc(100% - 64px)',
