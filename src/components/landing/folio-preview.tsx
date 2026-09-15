@@ -33,14 +33,13 @@ const LANGUAGE_DOT_COLOR: Record<string, string> = {
 }
 
 const IFRAME_DESKTOP_WIDTH = 1440
-const IFRAME_ZOOM_OUT = 0.85
 
 // Projects whose own responsive breakpoints (or awkward crop at the
 // preview box's aspect ratio) look better rendered at a fixed desktop
 // width and scaled down, rather than filling the box at native size.
 // `align: 'top'` crops a page taller than the box from its top (hero fold).
-// `align: 'center'` is for a page shorter than the box, so it doesn't get
-// pinned to the top with a large dead zone below.
+// `align: 'center'` full-bleed covers the box (like object-fit: cover),
+// filling all four frame edges and accepting small top/bottom cropping.
 const DESKTOP_SCALE_IFRAME: Record<string, { height: string; align: 'top' | 'center' }> = {
     tanglaw: { height: '2400px', align: 'top' },
     bantayog: { height: '950px', align: 'center' }
@@ -130,17 +129,13 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
 
     let iframeScale = 0
     if (useDesktopScale && desktopScaleCfg) {
-        const cfg = desktopScaleCfg
-        const widthScale = (iframeWrapSize.width / IFRAME_DESKTOP_WIDTH) * IFRAME_ZOOM_OUT
+        const widthScale = iframeWrapSize.width / IFRAME_DESKTOP_WIDTH
 
-        if (cfg.align === 'center' && iframeWrapSize.height > 0) {
-            // Fit the whole page inside the box on both axes (like
-            // object-fit: contain) rather than filling it — filling would
-            // crop the logo/content on whichever axis overflows. The
-            // bordered/shadowed frame below makes the remaining space read
-            // as deliberate padding around a screenshot, not blank/broken.
-            const heightScale = (iframeWrapSize.height / parseInt(cfg.height, 10)) * IFRAME_ZOOM_OUT
-            iframeScale = Math.min(widthScale, heightScale)
+        if (desktopScaleCfg.align === 'center' && iframeWrapSize.height > 0) {
+            const iframeHeight = Number.parseInt(desktopScaleCfg.height, 10)
+            const heightScale = iframeWrapSize.height / iframeHeight
+
+            iframeScale = Math.max(widthScale, heightScale)
         } else {
             iframeScale = widthScale
         }
@@ -153,7 +148,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
         return (
             <div data-preview-mode={mode} className='relative flex h-full w-full flex-col overflow-hidden border border-[#333] bg-[#101010] text-foreground'>
                 {mode === 'reel' && (
-                    <div className='z-10 flex flex-wrap items-center gap-2 border-b border-[#333] bg-[#101010] px-3 py-2'>
+                    <div className='relative z-10 flex flex-wrap items-center gap-2 border-b border-[#333] bg-[#101010] px-3 py-2'>
                         <Button
                             render={<a href={item.sourceUrl} target='_blank' rel='noreferrer' />}
                             nativeButton={false}
@@ -214,7 +209,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                 className={cn(
                                     'absolute left-1/2 bg-[#151515]',
                                     DESKTOP_SCALE_IFRAME[item.id].align === 'center'
-                                        ? 'top-1/2 origin-center rounded-[3px] border border-[#555] shadow-none'
+                                        ? 'top-1/2 origin-center border-0'
                                         : 'top-0 origin-top border-0'
                                 )}
                                 style={{
@@ -442,9 +437,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                 <>
                     <div className='flex shrink-0 items-center gap-3 border-b border-[#333] pb-3 font-mono text-[9px] uppercase tracking-[0.14em]'>
                         <span className='flex gap-1.5' aria-hidden='true'>
-                            <span className='size-1.5 rounded-full bg-foreground/25' />
-                            <span className='size-1.5 rounded-full bg-foreground/25' />
-                            <span className='size-1.5 rounded-full bg-foreground/25' />
+                            <span className='size-1.5 rounded-full bg-[#FF5F57]/60' />
+                            <span className='size-1.5 rounded-full bg-[#FEBC2E]/60' />
+                            <span className='size-1.5 rounded-full bg-[#28C840]/60' />
                         </span>
                         <span className='truncate text-foreground/85'>@{github.login}</span>
                         <span className='ml-auto text-foreground/45'>Live public activity</span>
