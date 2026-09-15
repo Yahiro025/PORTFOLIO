@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { loadGitHubSnapshot } from './github.ts'
+import { loadGitHubSnapshot, parseGitHubContributions } from './github.ts'
 
 const jsonResponse = (value, status = 200) => new Response(
     JSON.stringify(value),
@@ -87,4 +87,26 @@ test('returns null when any GitHub request fails', async () => {
     )
 
     assert.equal(await loadGitHubSnapshot(undefined, failedFetch), null)
+})
+
+test('parses contributions calendar HTML correctly', () => {
+    const html = `
+        <h2>590 contributions in the last year</h2>
+        <table class="ContributionCalendar-grid">
+            <td class="ContributionCalendar-day" data-date="2026-09-12" data-level="2" id="day-1"></td>
+            <td class="ContributionCalendar-day" data-date="2026-09-13" data-level="0" id="day-2"></td>
+        </table>
+        <tool-tip for="day-1">5 contributions on September 12th.</tool-tip>
+        <tool-tip for="day-2">No contributions on September 13th.</tool-tip>
+    `
+
+    const parsed = parseGitHubContributions(html)
+    assert.equal(parsed.totalContributions, 590)
+    assert.equal(parsed.contributions.length, 2)
+    assert.equal(parsed.contributions[0].date, '2026-09-12')
+    assert.equal(parsed.contributions[0].count, 5)
+    assert.equal(parsed.contributions[0].level, 2)
+    assert.equal(parsed.contributions[1].date, '2026-09-13')
+    assert.equal(parsed.contributions[1].count, 0)
+    assert.equal(parsed.contributions[1].level, 0)
 })

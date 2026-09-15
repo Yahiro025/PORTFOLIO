@@ -151,9 +151,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
         const mountIframe = mountProjectIframe
 
         return (
-            <div data-preview-mode={mode} className='flex h-full w-full flex-col overflow-hidden bg-muted'>
+            <div data-preview-mode={mode} className='relative flex h-full w-full flex-col overflow-hidden border border-[#333] bg-[#101010] text-foreground'>
                 {mode === 'reel' && (
-                    <div className='z-10 flex flex-wrap items-center gap-2 bg-muted p-3'>
+                    <div className='z-10 flex flex-wrap items-center gap-2 border-b border-[#333] bg-[#101010] px-3 py-2'>
                         <Button
                             render={<a href={item.sourceUrl} target='_blank' rel='noreferrer' />}
                             nativeButton={false}
@@ -202,7 +202,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                     </div>
                 )}
 
-                <div ref={iframeWrapRef} className='relative min-h-0 flex-1 overflow-hidden'>
+                <div ref={iframeWrapRef} className='relative mx-4 mt-4 min-h-0 flex-1 overflow-hidden border border-[#3b3b3b] bg-[#151515]'>
                     {mountIframe && (
                         useDesktopScale ? (
                             <iframe
@@ -212,9 +212,9 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                 referrerPolicy='strict-origin-when-cross-origin'
                                 scrolling={interactive ? 'yes' : 'no'}
                                 className={cn(
-                                    'absolute left-1/2 bg-background',
+                                    'absolute left-1/2 bg-[#151515]',
                                     DESKTOP_SCALE_IFRAME[item.id].align === 'center'
-                                        ? 'top-1/2 origin-center rounded-lg border border-border shadow-sm'
+                                        ? 'top-1/2 origin-center rounded-[3px] border border-[#555] shadow-none'
                                         : 'top-0 origin-top border-0'
                                 )}
                                 style={{
@@ -234,7 +234,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                 loading='lazy'
                                 referrerPolicy='strict-origin-when-cross-origin'
                                 scrolling={interactive ? 'yes' : 'no'}
-                                className='absolute inset-0 h-full w-full border-0 bg-background'
+                                className='absolute inset-0 h-full w-full border-0 bg-[#151515]'
                                 style={{
                                     visibility: mountIframe ? 'visible' : 'hidden',
                                     pointerEvents: interactive ? 'auto' : 'none'
@@ -244,7 +244,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                     )}
 
                     {!mountIframe && (
-                        <div className='absolute inset-0 flex h-full flex-col bg-foreground text-background'>
+                        <div className='absolute inset-0 flex h-full flex-col bg-[#151515] text-foreground'>
                             {item.posterUrl && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
@@ -254,19 +254,14 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                                     loading='lazy'
                                     decoding='async'
                                     fetchPriority='low'
-                                    className='absolute inset-0 h-full w-full object-cover object-top'
+                                    className='absolute inset-0 h-full w-full object-cover object-top opacity-[0.86]'
                                 />
                             )}
-                            <div
-                                className={cn(
-                                    'relative mt-auto min-h-0 p-6',
-                                    item.posterUrl && 'bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-16'
-                                )}
-                            >
-                                <h4 className='text-3xl font-semibold tracking-tight'>{item.title}</h4>
-                                {item.descriptor && <p className='mt-2 text-sm text-background/70'>{item.descriptor}</p>}
-                                <span className='mt-4 block font-mono text-[10px] uppercase tracking-[0.22em] text-background/70'>{item.meta}</span>
-                            </div>
+                            {!item.posterUrl && (
+                                <div className='absolute inset-0 grid place-items-center'>
+                                    <span className='font-mono text-sm uppercase tracking-[0.18em] text-foreground/70'>{item.title}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -275,22 +270,42 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                             type='button'
                             variant='overlay'
                             size='pillSm'
-                            className='absolute inset-x-3 bottom-3 z-10'
+                            className='absolute inset-x-3 bottom-3 z-10 border border-[#555] bg-[#101010]/90 font-mono text-[9px] uppercase tracking-[0.14em]'
                             onClick={event => { stop(event); onOpenDetails() }}
                         >
                             View details
                         </Button>
                     )}
                 </div>
+
+                {mode === 'reel' && (
+                    <div className='shrink-0 border-t border-[#3b3b3b] px-4 pb-4 pt-3'>
+                        <div className='flex items-baseline justify-between gap-3'>
+                            <h4 className='font-mono text-lg leading-none tracking-tight text-foreground'>{item.title}</h4>
+                            <span className='font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/50'>{item.year}</span>
+                        </div>
+                        <div className='mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-foreground/60'>
+                            <span>{item.meta}</span>
+                            {item.role && <span>{item.role}</span>}
+                        </div>
+                        <div className='mt-3 flex flex-wrap gap-2' aria-label='Technologies'>
+                            {item.stack.map(tech => (
+                                <span key={tech} className='rounded-[2px] border border-[#555] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-foreground/75'>
+                                    {tech}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         )
     }
 
     if (item.kind === 'about') {
         return (
-            <div data-preview-mode={mode} className='flex h-full flex-col bg-background'>
+            <div data-preview-mode={mode} className='relative flex h-full flex-col overflow-hidden border border-[#333] bg-[#101010] text-foreground'>
                 {mode === 'detail' ? (
-                    <div className='profile-card-slot h-[54%] w-full shrink-0 bg-background'>
+                    <div className='profile-card-slot relative h-[54%] w-full shrink-0 overflow-hidden border-b border-[#3b3b3b] bg-[#151515]'>
                         <ProfileCard
                             avatarUrl={item.avatarUrl}
                             iconUrl='/profile-icon-pattern.svg'
@@ -307,7 +322,7 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                         <ContactLanyard open={contactOpen} onOpenChange={setContactOpen} />
                     </div>
                 ) : (
-                    <picture className={cn('block w-full shrink-0', mode === 'reel' ? 'h-[46%]' : 'h-[59%]')}>
+                    <picture className={cn('relative flex w-full shrink-0 items-center justify-center overflow-hidden border-b border-[#3b3b3b] bg-[#151515] p-3', mode === 'reel' ? 'h-[46%]' : 'h-[59%]')}>
                         <source
                             type='image/webp'
                             srcSet={PROFILE_IMAGE.srcSet}
@@ -320,24 +335,45 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
                             height={PROFILE_IMAGE.height}
                             fetchPriority='high'
                             decoding='async'
-                            className='h-full w-full object-cover'
+                            className='h-full w-full object-contain'
                         />
                     </picture>
                 )}
-                <div className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-border', mode === 'detail' ? 'gap-4 p-6 justify-center' : 'gap-3 p-4')}>
+                <div className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-[#333] bg-[#101010]', mode === 'detail' ? 'gap-4 p-6 justify-center' : 'gap-4 p-5 md:gap-5 md:p-6')}>
                     <div>
-                        <h4 className='text-lg font-semibold uppercase tracking-tight text-foreground'>Bennett Payoyo</h4>
-                        <span className='mt-1 block text-sm text-foreground/70 md:hidden'>2nd year BSCS · PUP</span>
-                        <span className='mt-1 block font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>{item.tagline}</span>
+                        <h4 className='text-xl font-medium uppercase tracking-tight text-foreground'>Bennett Payoyo</h4>
+                        {mode === 'reel' ? (
+                            <span className='mt-1 block text-sm text-foreground/70'>Second-year Computer Science student · PUP</span>
+                        ) : (
+                            <span className='mt-1 block text-sm text-foreground/70 md:hidden'>2nd year BSCS · PUP</span>
+                        )}
+                        {mode === 'detail' && (
+                            <span className='mt-1 block font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>{item.tagline}</span>
+                        )}
                     </div>
 
-                    {mode === 'detail' && (
+                    {mode === 'reel' ? (
+                        <>
+                            <p className='max-w-prose text-sm leading-relaxed text-foreground/85'>{item.summary}</p>
+                            <div>
+                                <span className='font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>Currently</span>
+                                <ul className='mt-2 space-y-2 border border-[#333] bg-[#151515] p-3 text-sm leading-relaxed text-foreground/70'>
+                                    {item.currently.map((line, index) => (
+                                        <li key={line} className='flex gap-3'>
+                                            <span className='shrink-0 font-mono text-[9px] text-foreground/40'>{String(index + 1).padStart(2, '0')}</span>
+                                            <span>{line}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </>
+                    ) : (
                         <div>
                             <span className='font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>Currently</span>
-                            <ul className='mt-2 space-y-1.5 text-sm text-foreground/65'>
-                                {item.currently.map(line => (
-                                    <li key={line} className='flex gap-2'>
-                                        <span className='shrink-0 text-foreground/40'>–</span>
+                            <ul className='mt-2 space-y-2 border border-[#333] bg-[#151515] p-3 text-sm text-foreground/65'>
+                                {item.currently.map((line, index) => (
+                                    <li key={line} className='flex gap-3'>
+                                        <span className='shrink-0 font-mono text-[9px] text-foreground/40'>{String(index + 1).padStart(2, '0')}</span>
                                         <span>{line}</span>
                                     </li>
                                 ))}
@@ -364,28 +400,34 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
             : (
                 <div
                     aria-hidden
-                    className='flex h-full w-full items-center justify-center bg-muted'
+                    className='flex h-full w-full items-center justify-center bg-[#151515]'
                 >
-                    <div className='aspect-[1/1.414] h-full max-h-full w-auto border border-border bg-background shadow-sm' />
+                    <div className='aspect-[1/1.414] h-full max-h-full w-auto border border-[#bdbdbd] bg-[#efefeb] shadow-[0_12px_24px_rgba(0,0,0,0.22)]' />
                 </div>
             )
 
+        const resumePaper = (
+            <div className='min-h-0 flex-1 rotate-[-1.5deg] overflow-hidden border border-[#555] bg-[#efefeb] shadow-[0_18px_32px_rgba(0,0,0,0.24)]'>
+                {resumePreview}
+            </div>
+        )
+
         return (
-            <div data-preview-mode={mode} className='flex h-full flex-col bg-background'>
-                <span className='px-6 pt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/65'>Resume preview</span>
+            <div data-preview-mode={mode} className='flex h-full flex-col overflow-hidden border border-[#333] bg-[#101010] text-foreground'>
+                <span className='px-4 pt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60'>Resume preview</span>
                 {mode === 'detail' ? (
                     <a
                         href={item.pdfUrl}
                         target='_blank'
                         rel='noreferrer'
                         aria-label='Open the full resume PDF in a new tab'
-                        className='mx-6 my-4 block min-h-0 flex-1 overflow-hidden border border-border bg-background shadow-sm outline-none transition-colors hover:border-foreground/35 focus-visible:border-foreground/50 focus-visible:ring-2 focus-visible:ring-foreground/30'
+                        className='mx-4 my-4 flex min-h-0 flex-1 overflow-hidden border border-[#333] bg-[#151515] p-3 shadow-none outline-none transition-colors hover:border-foreground/35 focus-visible:border-foreground/50 focus-visible:ring-2 focus-visible:ring-foreground/30'
                     >
-                        {resumePreview}
+                        {resumePaper}
                     </a>
                 ) : (
-                    <div className='mx-6 my-4 min-h-0 flex-1 overflow-hidden border border-border bg-background shadow-sm'>
-                        {resumePreview}
+                    <div className='mx-4 my-4 flex min-h-0 flex-1 overflow-hidden border border-[#333] bg-[#151515] p-3 shadow-none'>
+                        {resumePaper}
                     </div>
                 )}
             </div>
@@ -395,61 +437,136 @@ export const FolioPreview: FC<FolioPreviewProps> = ({
     const repoCount = mode === 'detail' ? 6 : 4
 
     return (
-        <div data-preview-mode={mode} className='flex h-full flex-col overflow-y-auto bg-background p-6'>
+        <div data-preview-mode={mode} className='flex h-full flex-col overflow-y-auto border border-[#333] bg-[#101010] p-4 text-foreground md:p-5'>
             {github ? (
                 <>
-                    <div className='flex items-start gap-4'>
-                        <Avatar className='size-16 shrink-0 after:hidden'>
-                            <AvatarImage src={github.avatarUrl} alt={github.name} loading='lazy' />
-                            <AvatarFallback>{github.login.slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className='min-w-0'>
-                            <h4 className='truncate text-xl font-semibold tracking-tight text-foreground'>{github.name}</h4>
-                            <p className='text-sm text-muted-foreground'>@{github.login}</p>
+                    <div className='flex shrink-0 items-center gap-3 border-b border-[#333] pb-3 font-mono text-[9px] uppercase tracking-[0.14em]'>
+                        <span className='flex gap-1.5' aria-hidden='true'>
+                            <span className='size-1.5 rounded-full bg-foreground/25' />
+                            <span className='size-1.5 rounded-full bg-foreground/25' />
+                            <span className='size-1.5 rounded-full bg-foreground/25' />
+                        </span>
+                        <span className='truncate text-foreground/85'>@{github.login}</span>
+                        <span className='ml-auto text-foreground/45'>Live public activity</span>
+                    </div>
+
+                    <div className='pt-5'>
+                        <div className='flex items-start gap-4'>
+                            <Avatar className='size-12 shrink-0 border border-[#555] grayscale after:hidden'>
+                                <AvatarImage src={github.avatarUrl} alt={github.name} loading='lazy' />
+                                <AvatarFallback>{github.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className='min-w-0'>
+                                <h4 className='truncate text-xl font-medium tracking-tight text-foreground'>{github.name}</h4>
+                                <p className='font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/50'>@{github.login}</p>
+                            </div>
+                        </div>
+
+                        {github.bio && <p className='mt-4 max-w-prose text-sm leading-relaxed text-foreground/75'>{github.bio}</p>}
+
+                        <p className='mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground/50'>
+                            <span className='font-semibold text-foreground'>{github.followers}</span> followers
+                            <span className='mx-1.5'>·</span>
+                            <span className='font-semibold text-foreground'>{github.following}</span> following
+                            <span className='mx-1.5'>·</span>
+                            <span className='font-semibold text-foreground'>{github.publicRepos}</span> repositories
+                            {typeof github.totalContributions === 'number' && github.totalContributions > 0 && (
+                                <>
+                                    <span className='mx-1.5'>·</span>
+                                    <span className='font-semibold text-foreground'>{github.totalContributions}</span> contributions
+                                </>
+                            )}
+                        </p>
+
+                        <span className='mt-6 block font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/55'>Recent public work</span>
+                        <ul className={cn('mt-3 grid gap-3', mode === 'detail' && 'sm:grid-cols-2')}>
+                            {github.repos.slice(0, repoCount).map(repo => (
+                                <li key={repo.url} className='rounded-[3px] border border-[#333] bg-[#151515] p-3 transition-colors hover:border-foreground/35'>
+                                    <a
+                                        href={repo.url}
+                                        target='_blank'
+                                        rel='noreferrer'
+                                        onClick={stop}
+                                        className='block truncate text-sm font-medium text-foreground hover:underline'
+                                    >
+                                        {repo.name}
+                                    </a>
+                                    {repo.description && (
+                                        <p className='mt-1 line-clamp-2 text-xs text-foreground/55'>{repo.description}</p>
+                                    )}
+                                    <div className='mt-2 flex items-center gap-4 font-mono text-[10px] text-foreground/50'>
+                                        {repo.language && (
+                                            <span className='flex items-center gap-1.5'>
+                                                <span
+                                                    className='size-2.5 rounded-full'
+                                                    style={{ backgroundColor: LANGUAGE_DOT_COLOR[repo.language] ?? 'var(--muted-foreground)' }}
+                                                />
+                                                {repo.language}
+                                            </span>
+                                        )}
+                                        {repo.stars > 0 && <span>★ {repo.stars}</span>}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+
+                    <div className='mt-6'>
+                        <div className='flex items-center justify-between gap-3'>
+                            <span className='font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/55'>Activity</span>
+                            <span className='font-mono text-[9px] uppercase tracking-[0.14em] text-foreground/40'>
+                                {github.totalContributions
+                                    ? `${github.totalContributions} contributions / past year`
+                                    : `${github.commits.length} recent commits`}
+                            </span>
+                        </div>
+                        <div className='mt-3 grid w-fit grid-flow-col grid-rows-4 gap-1' aria-label='Recent public activity'>
+                            {(github.contributions && github.contributions.length > 0
+                                ? github.contributions.slice(-48)
+                                : github.commits.slice(0, 48)
+                            ).map((item, index) => {
+                                const isContrib = 'level' in item
+                                const level = isContrib ? item.level : (index % 7 === 0 ? 3 : index % 4 === 0 ? 2 : 1)
+                                const count = isContrib ? item.count : 1
+                                const label = isContrib
+                                    ? `${count} contributions on ${item.date}`
+                                    : `Commit ${item.message}`
+                                const url = isContrib ? `https://github.com/${github.login}` : item.url
+                                return (
+                                    <a
+                                        key={isContrib ? item.date : item.sha}
+                                        href={url}
+                                        target='_blank'
+                                        rel='noreferrer'
+                                        onClick={stop}
+                                        aria-label={label}
+                                        title={label}
+                                        className={cn(
+                                            'size-2 rounded-[1px] transition-colors hover:bg-foreground/80',
+                                            level === 0 && 'bg-foreground/15',
+                                            level === 1 && 'bg-foreground/35',
+                                            level === 2 && 'bg-foreground/55',
+                                            level === 3 && 'bg-foreground/75',
+                                            level === 4 && 'bg-foreground'
+                                        )}
+                                    />
+                                )
+                            })}
                         </div>
                     </div>
 
-                    {github.bio && <p className='mt-4 text-sm text-foreground'>{github.bio}</p>}
-
-                    <p className='mt-3 text-xs text-muted-foreground'>
-                        <span className='font-semibold text-foreground'>{github.followers}</span> followers
-                        <span className='mx-1.5'>·</span>
-                        <span className='font-semibold text-foreground'>{github.following}</span> following
-                        <span className='mx-1.5'>·</span>
-                        {github.publicRepos} repositories
-                    </p>
-
-                    <span className='mt-6 block font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground'>Pinned</span>
-                    <ul className={cn('mt-3 grid gap-3', mode === 'detail' && 'sm:grid-cols-2')}>
-                        {github.repos.slice(0, repoCount).map(repo => (
-                            <li key={repo.url} className='rounded-lg border border-border p-3'>
-                                <a
-                                    href={repo.url}
-                                    target='_blank'
-                                    rel='noreferrer'
-                                    onClick={stop}
-                                    className='block truncate text-sm font-semibold text-foreground hover:underline'
-                                >
-                                    {repo.name}
-                                </a>
-                                {repo.description && (
-                                    <p className='mt-1 line-clamp-2 text-xs text-muted-foreground'>{repo.description}</p>
-                                )}
-                                <div className='mt-2 flex items-center gap-4 text-xs text-muted-foreground'>
-                                    {repo.language && (
-                                        <span className='flex items-center gap-1.5'>
-                                            <span
-                                                className='size-2.5 rounded-full'
-                                                style={{ backgroundColor: LANGUAGE_DOT_COLOR[repo.language] ?? 'var(--muted-foreground)' }}
-                                            />
-                                            {repo.language}
-                                        </span>
-                                    )}
-                                    {repo.stars > 0 && <span>★ {repo.stars}</span>}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                    {mode === 'reel' && (
+                        <Button
+                            render={<a href={item.profileUrl} target='_blank' rel='noreferrer' />}
+                            nativeButton={false}
+                            variant='overlay'
+                            size='pillSm'
+                            onClick={stop}
+                            className='mt-5 w-fit self-end border border-[#555] bg-transparent font-mono text-[9px] uppercase tracking-[0.14em]'
+                        >
+                            Open Profile
+                        </Button>
+                    )}
+                    </div>
                 </>
             ) : (
                 <p className='mt-6 text-sm text-muted-foreground'>GitHub data is temporarily unavailable.</p>

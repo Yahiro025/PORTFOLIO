@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "About is visible in server HTML at 375, 768 and 1440px",
+    "Initial load stays on About without project iframes, PDF or cursor dot",
+    "Wheel without pointer entry, single notch, arrows, PageUp/Down and wrapping",
+    "Wheel cancels pending navigation without a stale detail open",
+    "Click during momentum and early detail close restore exact row and visibility"
+  ],
+  "errors": [],
+  "firstPartyFailures": []
+}

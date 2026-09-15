@@ -25,6 +25,11 @@ export const TITLE_REGISTER = {
     profile: { scale: 0.6, wghtMin: 380, wghtMax: 480 }
 } as const
 
+export const TITLE_PRESENTATION = {
+    work: { kicker: 'Work', marker: null, mono: false, uppercase: true },
+    profile: { kicker: 'Profile', marker: '—', mono: true, uppercase: false }
+} as const
+
 export const getGroup = (item: Pick<PortfolioItem, 'kind'>): PortfolioGroup => item.kind === 'project' ? 'work' : 'profile'
 
 export const getGroupPosition = (

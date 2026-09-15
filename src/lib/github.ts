@@ -1,4 +1,9 @@
-import type { GitHubCommitSummary, GitHubRepoSummary, GitHubSnapshot } from '@/types'
+import type {
+    GitHubCommitSummary,
+    GitHubContributionDay,
+    GitHubRepoSummary,
+    GitHubSnapshot
+} from '@/types'
 
 type FetchLike = typeof fetch
 type Clock = () => Date
@@ -12,11 +17,48 @@ const stringField = (record: Record<string, unknown>, key: string) =>
 const numberField = (record: Record<string, unknown>, key: string) =>
     typeof record[key] === 'number' ? record[key] : 0
 
+export const parseGitHubContributions = (
+    html: string
+): { totalContributions: number; contributions: GitHubContributionDay[] } => {
+    if (!html || typeof html !== 'string') return { totalContributions: 0, contributions: [] }
+
+    const totalMatch = html.match(/([\d,]+)\s+contributions\s+in the last year/i)
+    const totalContributions = totalMatch ? parseInt(totalMatch[1].replace(/,/g, ''), 10) : 0
+
+    const tooltipMap = new Map<string, number>()
+    const tooltipRegex = /<tool-tip[^>]*for="([^"]+)"[^>]*>(.*?)<\/tool-tip>/gs
+    let tm: RegExpExecArray | null
+    while ((tm = tooltipRegex.exec(html)) !== null) {
+        const text = tm[2].trim()
+        const countMatch = text.match(/^(\d+)\s+contribution/)
+        tooltipMap.set(tm[1], countMatch ? parseInt(countMatch[1], 10) : 0)
+    }
+
+    const tdMatches = html.match(/<td[^>]*class="[^"]*ContributionCalendar-day[^"]*"[^>]*>/g) || []
+    const contributions: GitHubContributionDay[] = []
+
+    for (const td of tdMatches) {
+        const date = td.match(/data-date="([^"]+)"/)?.[1]
+        const levelStr = td.match(/data-level="(\d+)"/)?.[1]
+        const id = td.match(/id="([^"]+)"/)?.[1]
+        if (date) {
+            const level = levelStr ? parseInt(levelStr, 10) : 0
+            const count = id && tooltipMap.has(id) ? tooltipMap.get(id)! : (level > 0 ? level : 0)
+            contributions.push({ date, level, count })
+        }
+    }
+
+    contributions.sort((a, b) => a.date.localeCompare(b.date))
+
+    return { totalContributions, contributions }
+}
+
 const normalizeGitHubSnapshot = (
     profileValue: unknown,
     reposValue: unknown,
     eventsValue: unknown,
-    fetchedAt: string
+    fetchedAt: string,
+    contributionsData?: { totalContributions?: number; contributions?: GitHubContributionDay[] }
 ): GitHubSnapshot | null => {
     if (!isRecord(profileValue)) return null
 
@@ -53,37 +95,73 @@ const normalizeGitHubSnapshot = (
 
     if (Array.isArray(eventsValue)) {
         for (const event of eventsValue) {
-            if (!isRecord(event) || event.type !== 'PushEvent') continue
-            if (!isRecord(event.repo) || !isRecord(event.payload)) continue
-
-            const repo = stringField(event.repo, 'name')
+            if (!isRecord(event)) continue
+            const repo = isRecord(event.repo) ? stringField(event.repo, 'name') : null
             const createdAt = stringField(event, 'created_at')
-            const eventCommits = event.payload.commits
 
-            if (!repo || !createdAt || !Array.isArray(eventCommits)) continue
+            if (!repo || !createdAt || !isRecord(event.payload)) continue
 
-            for (const commit of eventCommits) {
-                if (!isRecord(commit)) continue
+            if (event.type === 'PushEvent') {
+                const eventCommits = event.payload.commits
 
-                const sha = stringField(commit, 'sha')
-                const message = stringField(commit, 'message')
+                if (Array.isArray(eventCommits) && eventCommits.length > 0) {
+                    for (const commit of eventCommits) {
+                        if (!isRecord(commit)) continue
 
-                if (!sha || !message) continue
+                        const sha = stringField(commit, 'sha')
+                        const message = stringField(commit, 'message')
 
-                commits.push({
-                    repo,
-                    sha,
-                    message,
-                    url: `https://github.com/${repo}/commit/${sha}`,
-                    createdAt
-                })
+                        if (!sha || !message) continue
 
-                if (commits.length === 12) break
+                        commits.push({
+                            repo,
+                            sha,
+                            message,
+                            url: `https://github.com/${repo}/commit/${sha}`,
+                            createdAt
+                        })
+
+                        if (commits.length === 12) break
+                    }
+                } else {
+                    const head = stringField(event.payload, 'head')
+                    if (head) {
+                        const ref = (stringField(event.payload, 'ref') ?? 'main').replace('refs/heads/', '')
+                        commits.push({
+                            repo,
+                            sha: head.slice(0, 7),
+                            message: `Push to ${ref}`,
+                            url: `https://github.com/${repo}/commit/${head}`,
+                            createdAt
+                        })
+                    }
+                }
+            } else if (event.type === 'PullRequestEvent') {
+                const pr = isRecord(event.payload.pull_request) ? event.payload.pull_request : null
+                const headSha = pr && isRecord(pr.head) ? stringField(pr.head, 'sha') : null
+                const prNumber = numberField(event.payload, 'number')
+                const action = stringField(event.payload, 'action') ?? 'PR'
+
+                if (headSha || prNumber > 0) {
+                    const sha = headSha ? headSha.slice(0, 7) : String(prNumber)
+                    const prUrl = (pr && stringField(pr, 'html_url')) ?? `https://github.com/${repo}/pull/${prNumber}`
+                    commits.push({
+                        repo,
+                        sha,
+                        message: `${action} #${prNumber} on ${repo}`,
+                        url: prUrl,
+                        createdAt
+                    })
+                }
             }
 
             if (commits.length === 12) break
         }
     }
+
+    const totalStars = repos.reduce((sum, repo) => sum + repo.stars, 0)
+    const totalContributions = contributionsData?.totalContributions ?? 0
+    const contributions = contributionsData?.contributions ?? []
 
     return {
         login,
@@ -95,20 +173,35 @@ const normalizeGitHubSnapshot = (
         publicRepos: typeof profileValue.public_repos === 'number'
             ? profileValue.public_repos
             : repos.length,
+        totalStars,
+        totalContributions,
+        contributions,
         repos,
         commits,
         fetchedAt
     }
 }
 
+let cachedSnapshot: GitHubSnapshot | null = null
+let cachedAt = 0
+const CACHE_TTL_MS = 10 * 60 * 1000
+
 export const loadGitHubSnapshot = async (
     token = process.env.GITHUB_TOKEN,
     fetchImpl: FetchLike = fetch,
     now: Clock = () => new Date()
 ): Promise<GitHubSnapshot | null> => {
+    const isDefaultFetch = fetchImpl === fetch
+    const nowTime = now().getTime()
+
+    if (isDefaultFetch && cachedSnapshot && nowTime - cachedAt < CACHE_TTL_MS) {
+        return cachedSnapshot
+    }
+
     const headers: HeadersInit = {
         Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'Portfolio-App'
     }
 
     if (token) headers.Authorization = `Bearer ${token}`
@@ -125,7 +218,29 @@ export const loadGitHubSnapshot = async (
 
         const [profile, repos, events] = await Promise.all(responses.map(response => response.json()))
 
-        return normalizeGitHubSnapshot(profile, repos, events, now().toISOString())
+        let contributionsData: { totalContributions: number; contributions: GitHubContributionDay[] } | undefined
+        try {
+            const contribRes = await fetchImpl('https://github.com/users/Yahiro025/contributions', {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            })
+            if (contribRes.ok) {
+                const html = await contribRes.text()
+                contributionsData = parseGitHubContributions(html)
+            }
+        } catch {
+            // Ignore failure for contributions - core snapshot still succeeds
+        }
+
+        const snapshot = normalizeGitHubSnapshot(profile, repos, events, now().toISOString(), contributionsData)
+
+        if (isDefaultFetch && snapshot) {
+            cachedSnapshot = snapshot
+            cachedAt = nowTime
+        }
+
+        return snapshot
     } catch {
         return null
     }

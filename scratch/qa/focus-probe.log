@@ -1,0 +1,51 @@
+[
+  {
+    port: 3101,
+    step: 7,
+    focus: 'Source',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 8,
+    focus: 'Open live site',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 9,
+    focus: 'View details',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 10,
+    focus: 'Source',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 11,
+    focus: 'Open live site',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 12,
+    focus: 'View details',
+    scrolls: [ [Object] ],
+    detail: undefined
+  },
+  {
+    port: 3101,
+    step: 13,
+    focus: 'Source',
+    scrolls: [ [Object] ],
+    detail: undefined
+  }
+]
