@@ -31,11 +31,19 @@ const Home: FC<HomeProps> = ({ github }): ReactNode => (
     </>
 )
 
-export const getStaticProps: GetStaticProps<HomeProps> = async () => ({
-    props: {
-        github: await loadGitHubSnapshot()
-    },
-    revalidate: 21600
-})
+export const getStaticProps: GetStaticProps<HomeProps> = async () => {
+    const github = await loadGitHubSnapshot()
+
+    // Throwing keeps the last successful page instead of publishing an empty snapshot.
+    if (!github) {
+        throw new Error('Unable to load the GitHub snapshot for the homepage')
+    }
+
+    return {
+        props: {
+            github
+        }
+    }
+}
 
 export default Home

@@ -22,6 +22,7 @@ import {
     folioItems
 } from '@/constants/folio'
 import { FolioPreview } from '@/components/landing/folio-preview'
+import { ProfileReel } from '@/components/landing/profile-reel'
 import { ContactSheet, CONTACT_LINKS } from '@/components/landing/contact-lanyard'
 import { MobileGallery } from '@/components/landing/mobile-gallery'
 import {
@@ -34,6 +35,7 @@ import {
     getReelOffsets,
     reduceInteraction,
     snapReelPosition,
+    TITLE_PRESENTATION,
     TITLE_REGISTER
 } from '@/lib/portfolio'
 
@@ -58,7 +60,8 @@ const MASK_GRADIENT = `linear-gradient(to bottom, transparent 0, #000 ${TITLE_MA
 const RENDERED_ITEMS: PortfolioItem[] = Array.from({ length: RENDERED }, (_, i) => folioItems[i % N])
 
 const ABOUT_LOGICAL_IDX = folioItems.findIndex(item => item.id === 'about')
-const LANDING_POS = POS_MIN + ABOUT_LOGICAL_IDX
+const INITIAL_POS = POS_MIN + ABOUT_LOGICAL_IDX
+const LANDING_POS = POS_MIN
 
 const PROJECT_ITEMS = folioItems.filter((item): item is Extract<PortfolioItem, { kind: 'project' }> => item.kind === 'project')
 const PROFILE_ITEM = folioItems.find((item): item is Extract<PortfolioItem, { kind: 'about' }> => item.kind === 'about')!
@@ -67,7 +70,7 @@ const GITHUB_ITEM = folioItems.find((item): item is Extract<PortfolioItem, { kin
 
 // Both layouts are in the HTML. CSS selects one before hydration.
 const initialLayoutStyle = (L: FolioLayout, prefix: string) => {
-    const offsets = getReelOffsets(LANDING_POS, L, RENDERED)
+    const offsets = getReelOffsets(INITIAL_POS, L, RENDERED)
     return {
         [`--${prefix}title-top`]: `${L.titleTopVh}dvh`,
         [`--${prefix}title-area`]: `${L.titleAreaVh}dvh`,
@@ -84,7 +87,39 @@ const initialLayoutStyle = (L: FolioLayout, prefix: string) => {
 
 const INITIAL_STYLE = {
     ...initialLayoutStyle(DESKTOP_LAYOUT, 'desktop-'),
-    ...initialLayoutStyle(MOBILE_LAYOUT, 'mobile-')
+    ...initialLayoutStyle(MOBILE_LAYOUT, 'mobile-'),
+    '--background': '#080808',
+    '--foreground': '#f2f2f0',
+    '--card': '#101010',
+    '--card-foreground': '#f2f2f0',
+    '--popover': '#101010',
+    '--popover-foreground': '#f2f2f0',
+    '--primary': '#f2f2f0',
+    '--primary-foreground': '#080808',
+    '--secondary': '#151515',
+    '--secondary-foreground': '#f2f2f0',
+    '--muted': '#151515',
+    '--muted-foreground': '#8a8a86',
+    '--accent': '#151515',
+    '--accent-foreground': '#f2f2f0',
+    '--border': '#343434',
+    '--input': '#343434',
+    '--ring': '#8a8a86',
+    // Tailwind v4 resolves these aliases on :root. Keep the reel's mobile
+    // controls on the same dark register as the desktop composition.
+    '--color-background': '#080808',
+    '--color-foreground': '#f2f2f0',
+    '--color-card': '#101010',
+    '--color-card-foreground': '#f2f2f0',
+    '--color-primary': '#f2f2f0',
+    '--color-primary-foreground': '#080808',
+    '--color-secondary': '#151515',
+    '--color-secondary-foreground': '#f2f2f0',
+    '--color-muted': '#151515',
+    '--color-muted-foreground': '#8a8a86',
+    '--color-border': '#343434',
+    '--color-input': '#343434',
+    '--color-ring': '#8a8a86'
 } as CSSProperties
 
 type Phase = 'idle' | 'opening' | 'detail' | 'closing'
@@ -98,7 +133,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const [isMobile, setIsMobile] = useState(false)
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
     const [liveMountEnabled, setLiveMountEnabled] = useState(false)
-    const [activeIdx, setActiveIdx] = useState(LANDING_POS)
+    const [activeIdx, setActiveIdx] = useState(INITIAL_POS)
     const [settledRenderedIdx, setSettledRenderedIdx] = useState<number | null>(null)
     const settledIdxRef = useRef<number | null>(null)
     const [interactingRenderedIdx, setInteractingRenderedIdx] = useState<number | null>(null)
@@ -126,9 +161,9 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const layoutRef = useRef(DESKTOP_LAYOUT)
     const reducedMotionRef = useRef(false)
 
-    const targetPosRef = useRef(LANDING_POS)
-    const posRef = useRef(LANDING_POS)
-    const activeIdxRef = useRef(LANDING_POS)
+    const targetPosRef = useRef(INITIAL_POS)
+    const posRef = useRef(INITIAL_POS)
+    const activeIdxRef = useRef(INITIAL_POS)
 
     const interactingRef = useRef(false)
     const navigatingRef = useRef(false)
@@ -136,7 +171,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     const lastWheelTimeRef = useRef(0)
     const lastDirectionRef = useRef(0)
     const renderReelRef = useRef<() => void>(() => {})
-    const navProxyRef = useRef({ value: LANDING_POS })
+    const navProxyRef = useRef({ value: INITIAL_POS })
     const hoveredTitleIdxRef = useRef<number | null>(null)
 
     const sourceImageRectRef = useRef<DOMRect | null>(null)
@@ -191,7 +226,7 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         const counter = counterRef.current
 
         if (!counter || motionPolicy.sharedElementDuration === 0) return
-        if (activeIdxRef.current === LANDING_POS) return
+        if (activeIdxRef.current === INITIAL_POS) return
 
         gsap.fromTo(counter, { y: 6, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
     }, [activeGroupPosition.group, motionPolicy.sharedElementDuration])
@@ -864,6 +899,10 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
     }, [detailIdx, detailElement, isMobile, motionPolicy.sharedElementDuration, motionPolicy.blurEntrance])
 
     const activeLogicalIdx = ((activeIdx % N) + N) % N
+    const activeItem = folioItems[activeLogicalIdx]
+    const activeTags = activeItem.kind === 'project' || activeItem.kind === 'about' || activeItem.kind === 'resume'
+        ? activeItem.kind === 'project' ? activeItem.stack : activeItem.focus
+        : []
     const mobileSelectedProjectIndex = PROJECT_ITEMS.findIndex(project => project.id === folioItems[activeLogicalIdx]?.id)
 
     const selectMobileLogicalItem = (logicalIndex: number) => {
@@ -895,11 +934,18 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
         openDetailFromActiveAt(POS_MIN + logicalIndex)
     }
 
+    const selectProfileItem = (item: PortfolioItem) => {
+        const logicalIndex = folioItems.findIndex(candidate => candidate.id === item.id)
+
+        if (logicalIndex >= 0) navigateAndOpen(POS_MIN + logicalIndex, false)
+    }
+
     return (
         <section
             ref={sectionRef}
             aria-label='Selected work'
-            className='folio-reel relative h-[100dvh] w-full select-none overflow-hidden bg-background'
+            className='folio-reel relative h-[100dvh] w-full select-none overflow-hidden bg-[#080808] text-[#f2f2f0]'
+            data-active-group={activeGroupPosition.group}
             style={INITIAL_STYLE}
         >
             <div aria-hidden className='absolute inset-x-0 top-0 z-[9] h-20 bg-background md:hidden' />
@@ -908,34 +954,45 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                 data-chrome
                 className='absolute left-6 top-5 z-10 md:left-12 md:top-10'
             >
-                <h1 className='text-sm font-semibold text-foreground'><button type='button' onClick={() => viewportIsMobile ? selectMobileLogicalItem(ABOUT_LOGICAL_IDX) : navigateAndOpen(LANDING_POS)}>Bennett Payoyo</button></h1>
-                <p className='mt-1 text-xs text-muted-foreground'>2nd year BSCS · PUP</p>
-                <a href={CONTACT_LINKS.email} className='cursor-target mt-1 hidden w-fit text-xs text-muted-foreground underline-offset-4 hover:underline md:block'>Contact</a>
+                <h1 className='text-[15px] font-medium text-[#f2f2f0]'><button type='button' onClick={() => viewportIsMobile ? selectMobileLogicalItem(ABOUT_LOGICAL_IDX) : navigateAndOpen(LANDING_POS)}>Bennett Payoyo</button></h1>
+                <p className='mt-1 text-xs text-[#8a8a86]'>2nd year BSCS · PUP</p>
+                <a href={CONTACT_LINKS.email} className='cursor-target mt-1 hidden w-fit text-xs text-[#8a8a86] underline-offset-4 hover:underline md:block'>Contact</a>
             </div>
 
             <div
                 data-chrome
                 className='pointer-events-none absolute right-6 top-14 z-10 hidden items-center gap-3 md:right-12 md:top-10 md:flex'
             >
-                <span ref={counterRef} className='font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground tabular-nums'>
-                    {activeGroupPosition.group === 'work' ? 'Work' : 'Profile'} {String(activeGroupPosition.index).padStart(2, '0')}
-                    <span className='mx-1.5 opacity-40'>/</span>
-                    {String(activeGroupPosition.total).padStart(2, '0')}
+                <span className='h-px w-7 bg-[#666]' />
+                <span ref={counterRef} className='font-mono text-[10px] uppercase tracking-[0.18em] text-[#f2f2f0] tabular-nums'>
+                    <span className='sr-only'>
+                        {activeGroupPosition.group === 'work' ? 'Work' : 'Profile'}, item {activeGroupPosition.index} of {activeGroupPosition.total}.
+                    </span>
+                    <span aria-hidden='true'>
+                        {activeGroupPosition.group === 'work' ? 'WORK' : 'PROFILE'}{'  '}
+                        {String(activeGroupPosition.index).padStart(2, '0')} / {String(activeGroupPosition.total).padStart(2, '0')}
+                    </span>
                 </span>
+            </div>
 
-                <span className='hidden h-px w-8 bg-foreground/30 md:block' />
+            <div aria-hidden className='pointer-events-none absolute left-0 top-1/2 z-10 hidden h-[370px] w-5 -translate-y-1/2 items-center justify-center md:flex'>
+                <span className='w-[370px] rotate-90 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[#8a8a86]'>BUILD&nbsp; / &nbsp;LEARN&nbsp; / &nbsp;CREATE&nbsp; / &nbsp;REPEAT</span>
+            </div>
+
+            <div aria-hidden className='pointer-events-none absolute right-0 top-1/2 z-10 hidden h-[290px] w-4 -translate-y-1/2 items-center justify-center md:flex'>
+                <span className='w-[290px] -rotate-90 text-center font-mono text-[9px] uppercase tracking-[0.16em] text-[#666]'>BETTER&nbsp; / &nbsp;PEOPLE&nbsp; / &nbsp;THROUGH&nbsp; / &nbsp;TECH</span>
             </div>
 
             <div
-                className='reel-titles absolute left-0 z-[1] w-full overflow-clip md:w-1/2'
+                className='reel-titles absolute left-0 z-[1] w-full overflow-clip md:pointer-events-none'
                 style={{ maskImage: MASK_GRADIENT, WebkitMaskImage: MASK_GRADIENT }}
             >
-                <div ref={titleRevealRef} className='absolute inset-0'>
+                <div ref={titleRevealRef} className='absolute inset-0 md:-translate-y-[22dvh]'>
                     <div ref={titleStripRef} className='reel-title-strip absolute inset-x-0 top-0 will-change-transform'>
                         {RENDERED_ITEMS.map((item, i) => {
                             const isCanonical = i >= N && i < 2 * N
                             const groupPosition = getGroupPosition(folioItems, i % N)
-                            const profile = groupPosition.group === 'profile'
+                            const presentation = TITLE_PRESENTATION[getGroup(item)]
 
                             return (
                                 <div
@@ -962,20 +1019,20 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     onPointerLeave={() => {
                                         if (hoveredTitleIdxRef.current === i) hoveredTitleIdxRef.current = null
                                     }}
-                                    className='reel-title cursor-target flex cursor-pointer items-center justify-center rounded-lg px-6 text-center outline-none focus-visible:ring-1 focus-visible:ring-foreground/40 md:justify-start md:gap-4 md:pl-12 md:pr-8 md:text-left lg:pl-20'
+                                    className='reel-title cursor-target flex cursor-pointer items-center justify-center px-6 text-center outline-none focus-visible:ring-1 focus-visible:ring-foreground/40 md:w-[42%] md:pointer-events-auto md:justify-start md:pl-[76px] md:pr-8 md:text-left'
+                                    data-kind={item.kind}
                                     style={{ '--title-scale': TITLE_REGISTER[getGroup(item)].scale } as CSSProperties}
                                 >
-                                    <div className={cn(profile && 'flex flex-col gap-1')}>
-                                        {profile && <span className='font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/65'>Profile · {String(groupPosition.index).padStart(2, '0')}</span>}
-                                        <h3 className='whitespace-nowrap leading-none tracking-[-0.015em]'>
-                                            {item.title}
-                                            {item.descriptor && (
-                                                <span className='hidden 2xl:inline'>
-                                                    <span className='mx-[0.35em] text-[0.7em]'>·</span>
-                                                    <span className='text-[0.7em]'>{item.descriptor}</span>
-                                                </span>
-                                            )}
+                                    <span className='w-8 shrink-0 text-left font-mono text-[13px] text-[#8a8a86]'>{String(groupPosition.index).padStart(2, '0')}</span>
+                                    <span aria-hidden className='mx-2 h-[70px] w-px shrink-0 bg-[#2b2b2b]' />
+                                    <div className='min-w-0'>
+                                        <h3 className={cn('whitespace-nowrap leading-none tracking-[-0.015em]', presentation.mono && 'font-mono')}>
+                                            {presentation.uppercase
+                                                ? <span className='uppercase tracking-[-0.005em]'>{item.title}</span>
+                                                : item.title}
                                         </h3>
+                                        {item.descriptor && <span className='mt-1 block text-sm text-[#6d6d6d]'>{item.descriptor}</span>}
+                                        {groupPosition.group === 'profile' && <span className='mt-1 block font-mono text-[10px] text-[#555]'>{item.year}</span>}
                                     </div>
                                 </div>
                             )
@@ -985,9 +1042,18 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
             </div>
 
             <div
-                className='reel-images absolute left-0 w-full overflow-clip md:left-auto md:right-0 md:w-1/2'
+                className='reel-images absolute left-0 z-[2] w-full overflow-clip md:left-[41%] md:right-0 md:w-[59%]'
             >
-                <div ref={imageRevealRef} className='absolute inset-0'>
+                <div aria-hidden className='pointer-events-none absolute inset-0 z-0 hidden md:block'>
+                    <div className='absolute left-[6%] top-[4%] h-[52%] w-[86%] border border-[#3b3b3b] bg-[#111] opacity-90' style={{ transform: 'rotate(4deg)' }}>
+                        <span className='absolute left-7 top-7 font-medium text-sm text-[#777]'>{folioItems[(activeLogicalIdx + 1) % N].title}</span>
+                    </div>
+                    <div className='absolute left-[10%] top-[78%] h-[48%] w-[86%] border border-[#333] bg-[#101010] opacity-80' style={{ transform: 'rotate(-1.5deg)' }}>
+                        <span className='absolute left-7 top-7 font-medium text-sm text-[#777]'>{folioItems[(activeLogicalIdx + 2) % N].title}</span>
+                    </div>
+                </div>
+
+                <div ref={imageRevealRef} className='absolute inset-0 md:-translate-y-[14dvh]'>
                     <div ref={imageStripRef} className='reel-image-strip absolute inset-x-0 top-0 will-change-transform'>
                         {RENDERED_ITEMS.map((item, i) => {
                             const presentation = getPreviewPresentation(
@@ -1007,30 +1073,57 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                                     style={{ '--slot': RENDERED - 1 - i } as CSSProperties}
                                 >
                                     <div
-                                        ref={(el) => {
-                                            slotRefs.current[i] = el
+                                        className='relative flex items-center justify-center transition-transform duration-700 ease-out motion-reduce:transition-none'
+                                        style={{
+                                            transform: `rotate(${i === activeIdx ? 2 : i < activeIdx ? 4 : -1.5}deg)`,
+                                            zIndex: i === activeIdx ? 20 : 5
                                         }}
-                                        onClick={() => {
-                                            if (interactingRenderedIdx === null) navigateAndOpen(i)
-                                        }}
-                                        className='reel-card cursor-target relative overflow-hidden rounded-2xl bg-muted'
-                                        data-kind={item.kind}
-                                        style={{ opacity: i === LANDING_POS ? 1 : 0.78, aspectRatio: '4 / 5', willChange: 'transform, opacity' }}
                                     >
-                                        <div className='h-full' inert={i !== activeIdx || detailIdx !== null}>
-                                        <FolioPreview
-                                            item={item}
-                                            presentation={presentation}
-                                            github={github}
-                                            mode='reel'
-                                            renderedIndex={i}
-                                            activeIndex={activeIdx}
-                                            settledIndex={settledRenderedIdx}
-                                            liveMountEnabled={liveMountEnabled && detailIdx === null}
-                                            onInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'enter', renderedIndex: i }))}
-                                            onExitInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'exit' }))}
-                                            onOpenDetails={() => navigateAndOpen(i)}
-                                        />
+                                        <div
+                                            ref={(el) => {
+                                                slotRefs.current[i] = el
+                                            }}
+                                            onClick={() => {
+                                                if (interactingRenderedIdx === null) navigateAndOpen(i)
+                                            }}
+                                            className='reel-card cursor-target relative overflow-hidden rounded-[3px] border border-[#3b3b3b] bg-muted shadow-[0_20px_80px_rgba(0,0,0,0.45)]'
+                                            data-kind={item.kind}
+                                            style={{
+                                                opacity: i === INITIAL_POS ? 1 : 0.78,
+                                                aspectRatio: item.kind === 'project' ? '16 / 9' : '4 / 5',
+                                                height: item.kind === 'project' ? 'min(47dvh, calc((59vw - 64px) * 0.5625))' : 'min(60dvh, 540px)',
+                                                maxWidth: 'calc(100% - 64px)',
+                                                willChange: 'transform, opacity',
+                                                ...(item.kind === 'project' ? {
+                                                    '--background': '#f2f2f0',
+                                                    '--foreground': '#101010',
+                                                    '--muted': '#151515',
+                                                    '--muted-foreground': '#a0a0a0',
+                                                    '--border': '#343434'
+                                                } : item.kind === 'resume' ? {
+                                                    '--background': '#f2f2f0',
+                                                    '--foreground': '#101010',
+                                                    '--muted': '#e8e8e4',
+                                                    '--muted-foreground': '#555552',
+                                                    '--border': '#c9c9c4'
+                                                } : {})
+                                            } as CSSProperties}
+                                        >
+                                            <div className='h-full' inert={i !== activeIdx || detailIdx !== null}>
+                                            <FolioPreview
+                                                item={item}
+                                                presentation={presentation}
+                                                github={github}
+                                                mode='reel'
+                                                renderedIndex={i}
+                                                activeIndex={activeIdx}
+                                                settledIndex={settledRenderedIdx}
+                                                liveMountEnabled={liveMountEnabled && detailIdx === null}
+                                                onInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'enter', renderedIndex: i }))}
+                                                onExitInteract={() => setInteractingRenderedIdx(reduceInteraction(interactingRenderedIdx, { type: 'exit' }))}
+                                                onOpenDetails={() => navigateAndOpen(i)}
+                                            />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1038,6 +1131,41 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                         })}
                     </div>
                 </div>
+            </div>
+
+            <div className='pointer-events-none absolute left-[41%] right-0 top-[72%] z-[6] hidden px-[7%] md:block'>
+                <div className='border-t border-[#333] pt-3'>
+                    <div className='flex items-baseline gap-4'>
+                        <span className='font-mono text-[21px] leading-none tracking-[-0.02em] text-[#d0d0cc]'>
+                            {String(activeGroupPosition.index).padStart(2, '0')} / {activeItem.title}
+                        </span>
+                        <span className='truncate font-mono text-[9px] uppercase tracking-[0.16em] text-[#777]'>{activeItem.meta}</span>
+                    </div>
+                    <div className='mt-3 flex flex-wrap items-center gap-2'>
+                        {activeTags.map(tag => (
+                            <Badge key={tag} variant='chipMono' className='rounded-[2px] border border-[#555] bg-transparent px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[#b8b8b8]'>{tag}</Badge>
+                        ))}
+                        <span className='ml-auto whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.14em] text-[#777]'>SCROLL / DRAG TO NAVIGATE</span>
+                    </div>
+                </div>
+            </div>
+
+            <div data-chrome className='absolute bottom-[7%] left-[9.6%] z-10 hidden md:block'>
+                <button
+                    type='button'
+                    onClick={() => navigateAndOpen(POS_MIN + ABOUT_LOGICAL_IDX, false)}
+                    className='cursor-target font-mono text-[10px] uppercase tracking-[0.16em] text-[#8a8a86] transition-colors hover:text-[#f2f2f0]'
+                >
+                    CONTINUE TO PROFILE ↓
+                </button>
+            </div>
+
+            <div aria-hidden className='pointer-events-none absolute bottom-[7%] left-12 z-10 hidden font-mono text-[10px] leading-[1.45] text-[#8a8a86] md:block'>
+                Software Engineer<br />in the making.
+            </div>
+
+            <div aria-hidden className='pointer-events-none absolute bottom-[7%] right-12 z-10 hidden font-mono text-[9px] leading-[1.35] text-[#8a8a86] md:block'>
+                {PROFILE_ITEM.year}<br />PUP<br />BSCS
             </div>
 
             {isMobile && (
@@ -1051,12 +1179,28 @@ export const FolioReel: FC<FolioReelProps> = ({ github }): ReactNode => {
                         reducedMotion={prefersReducedMotion}
                         onProjectChange={selectMobileProject}
                         onShowProfile={() => selectMobileLogicalItem(ABOUT_LOGICAL_IDX)}
+                        onOpenProfileDetails={() => {
+                            if (!selectMobileLogicalItem(ABOUT_LOGICAL_IDX)) return
+                            openDetailFromActiveAt(POS_MIN + ABOUT_LOGICAL_IDX)
+                        }}
                         onOpenDetails={openMobileDetails}
                         onOpenContact={() => setContactOpen(true)}
                         onFocusTarget={target => { mobileFocusRef.current = target }}
                     />
                     <ContactSheet open={contactOpen} onOpenChange={setContactOpen} />
                 </>
+            )}
+
+            {!viewportIsMobile && activeGroupPosition.group === 'profile' && detailIdx === null && (
+                <ProfileReel
+                    items={folioItems}
+                    github={github}
+                    activeId={folioItems[activeLogicalIdx]?.id}
+                    contactHref={CONTACT_LINKS.email}
+                    onSelect={selectProfileItem}
+                    onBackToWork={() => navigateAndOpen(LANDING_POS, false)}
+                    className='absolute inset-0 z-20'
+                />
             )}
 
             {detailItem &&

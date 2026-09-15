@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Desktop starts on About with PROFILE 01 / 03 and no deferred project/PDF media",
+    "Desktop Profile navigation switches About, Resume, and GitHub",
+    "Profile return lands on Work 01 / 05 at the canonical Work position",
+    "Work project details open and Back returns to the active project",
+    "Mobile starts on the About profile and switches between Profile and Work",
+    "Project deep link opens BANTAYOG and Back closes it",
+    "No first-party responses or browser errors"
+  ],
+  "errors": [],
+  "firstPartyFailures": []
+}

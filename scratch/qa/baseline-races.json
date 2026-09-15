@@ -1,0 +1,57 @@
+{
+  "errors": [],
+  "open": {
+    "title": "C Reviewer",
+    "transforms": [
+      "translate3d(0px, -639.56px, 0px)",
+      "translate3d(0px, -6280.69px, 0px)"
+    ]
+  },
+  "closed": {
+    "transforms": [
+      "translate3d(0px, -640px, 0px)",
+      "translate3d(0px, -6277.5px, 0px)"
+    ],
+    "opacity": [
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.78",
+      "1",
+      "0.78",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18",
+      "0.18"
+    ]
+  },
+  "contact": {
+    "taps": [
+      "https://mail.google.com/mail/?view=cm&fs=1&to=bennettpayoyo3.14@gmail.com",
+      "https://www.linkedin.com/in/bennett-payoyo/",
+      "https://wa.me/639913800307",
+      "viber://chat?number=%2B639913800307"
+    ],
+    "links": [],
+    "canvas": [
+      {
+        "width": 760,
+        "height": 765
+      }
+    ]
+  }
+}

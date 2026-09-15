@@ -1,0 +1,21 @@
+PASS About is visible in server HTML at 375, 768 and 1440px
+PASS Initial load stays on About without project iframes, PDF or cursor dot
+PASS Wheel without pointer entry, single notch, arrows, PageUp/Down and wrapping
+PASS Wheel cancels pending navigation without a stale detail open
+PASS Click during momentum and early detail close restore exact row and visibility
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.getAttribute: Timeout 10000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('link', { name: 'Open live site', exact: true })[22m
+
+    at /home/yahiro/Pictures/portfolio/scripts/qa.mjs:118:37 {
+  log: [
+    "  - waiting for getByRole('link', { name: 'Open live site', exact: true })"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v26.8.1

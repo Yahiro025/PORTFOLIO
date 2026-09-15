@@ -108,6 +108,12 @@ export interface GitHubCommitSummary {
     createdAt: string
 }
 
+export interface GitHubContributionDay {
+    date: string
+    count: number
+    level: number
+}
+
 export interface GitHubSnapshot {
     login: string
     name: string
@@ -116,6 +122,9 @@ export interface GitHubSnapshot {
     followers: number
     following: number
     publicRepos: number
+    totalStars?: number
+    totalContributions?: number
+    contributions?: GitHubContributionDay[]
     repos: GitHubRepoSummary[]
     commits: GitHubCommitSummary[]
     fetchedAt: string

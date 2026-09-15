@@ -13,6 +13,7 @@ import {
     shouldMountProjectIframe,
     shouldMountResumePdf,
     snapReelPosition,
+    TITLE_PRESENTATION,
     TITLE_REGISTER,
     validatePortfolioItems
 } from './portfolio.ts'
@@ -218,6 +219,11 @@ test('group position is one-based within the active group', () => {
 test('title registers use the approved type scale and weight ranges', () => {
     assert.deepEqual(TITLE_REGISTER.work, { scale: 1, wghtMin: 420, wghtMax: 620 })
     assert.deepEqual(TITLE_REGISTER.profile, { scale: 0.6, wghtMin: 380, wghtMax: 480 })
+})
+
+test('title presentation separates the profile and work registers', () => {
+    assert.deepEqual(TITLE_PRESENTATION.work, { kicker: 'Work', marker: null, mono: false, uppercase: true })
+    assert.deepEqual(TITLE_PRESENTATION.profile, { kicker: 'Profile', marker: '—', mono: true, uppercase: false })
 })
 
 test('resume items require a PDF URL', () => {

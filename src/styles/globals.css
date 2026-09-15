@@ -255,3 +255,368 @@
         padding-top: 0;
     }
 }
+
+/* Desktop reel register. Keep the mobile gallery on the existing token set. */
+@media (min-width: 768px) {
+    .folio-reel {
+        --background: #080808;
+        --foreground: #f2f2f2;
+        --card: #0f0f0f;
+        --card-foreground: #f2f2f2;
+        --popover: #0f0f0f;
+        --popover-foreground: #f2f2f2;
+        --primary: #f2f2f2;
+        --primary-foreground: #080808;
+        --secondary: #151515;
+        --secondary-foreground: #f2f2f2;
+        --muted: #111111;
+        --muted-foreground: #8b8b8b;
+        --accent: #151515;
+        --accent-foreground: #f2f2f2;
+        --border: #2b2b2b;
+        --input: #2b2b2b;
+        --ring: #777777;
+        isolation: isolate;
+        color-scheme: dark;
+        background-color: #080808;
+        color: #f2f2f2;
+        font-family: var(--font-sans), Geist, sans-serif;
+    }
+
+    .folio-reel::before,
+    .folio-reel::after {
+        position: absolute;
+        z-index: 10;
+        display: block;
+        pointer-events: none;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 9px;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: pre;
+        color: rgb(242 242 242 / 52%);
+    }
+
+    .folio-reel::before {
+        content: 'BUILD  /  LEARN  /  CREATE  /  REPEAT';
+        top: 77dvh;
+        left: 20px;
+        width: 370px;
+        transform: rotate(-90deg);
+        transform-origin: left top;
+    }
+
+    .folio-reel::after {
+        content: 'BETTER  PEOPLE  THROUGH  TECH';
+        top: 65.5dvh;
+        right: 20px;
+        width: 290px;
+        transform: rotate(-90deg);
+        transform-origin: right top;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none) {
+        top: 36px;
+        left: 48px;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none) h1 {
+        font-size: 15px;
+        font-weight: 500;
+        line-height: 1.5;
+        letter-spacing: -0.02em;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none) p,
+    .folio-reel > [data-chrome]:not(.pointer-events-none) a {
+        margin-top: 2px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #8b8b8b;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none)::after {
+        content: 'Software Engineer\A in the making.';
+        position: fixed;
+        bottom: 32px;
+        left: 48px;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 10px;
+        line-height: 1.1;
+        letter-spacing: 0.04em;
+        white-space: pre;
+        color: #9a9a9a;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none {
+        top: 40px;
+        right: 48px;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 10px;
+        line-height: 1;
+        letter-spacing: 0.08em;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span::before {
+        content: '';
+        display: block;
+        width: 28px;
+        height: 1px;
+        flex: 0 0 auto;
+        background: #777777;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span::after {
+        content: '2026\A PUP\A BSCS';
+        position: fixed;
+        right: 48px;
+        bottom: 28px;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 9px;
+        line-height: 1.2;
+        letter-spacing: 0.06em;
+        white-space: pre;
+        color: #a0a0a0;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span [aria-hidden='true'] {
+        gap: 8px;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span [aria-hidden='true'] span {
+        font-size: 10px;
+        font-weight: 400;
+        line-height: 1;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span [aria-hidden='true'] span:first-child {
+        color: #f2f2f2;
+    }
+
+    .folio-reel .reel-titles {
+        z-index: 2;
+    }
+
+    .folio-reel .reel-title {
+        position: relative;
+        justify-content: flex-start;
+        gap: 0;
+        padding-left: 76px;
+        padding-right: 32px;
+        border-radius: 0;
+        text-align: left;
+    }
+
+    .folio-reel .reel-title::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 116px;
+        width: 1px;
+        height: 70px;
+        background: #2b2b2b;
+        transform: translateY(-50%);
+    }
+
+    .folio-reel .reel-title[aria-current='true']::before {
+        background: #666666;
+    }
+
+    .folio-reel .reel-title > div {
+        min-width: 0;
+    }
+
+    .folio-reel .reel-title > div > span {
+        position: static;
+        top: auto;
+        left: auto;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.5;
+        letter-spacing: normal;
+        color: #6d6d6d;
+        transform: none;
+    }
+
+    .folio-reel .reel-title > span:first-child {
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        color: #8b8b8b;
+    }
+
+    .folio-reel .reel-title[aria-current='true'] > span:first-child {
+        color: #f2f2f2;
+    }
+
+    .folio-reel .reel-title h3 {
+        font-weight: 500;
+        letter-spacing: -0.04em;
+    }
+
+    .folio-reel .reel-titles::after {
+        content: 'CONTINUE TO PROFILE  ↓';
+        position: fixed;
+        bottom: 64px;
+        left: 138px;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 10px;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        color: #8a8a86;
+    }
+
+    .folio-reel .reel-images {
+        z-index: 1;
+        mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+    }
+
+    .folio-reel .reel-image-slot {
+        z-index: 1;
+        transform-origin: center;
+        will-change: transform;
+    }
+
+    .folio-reel .reel-image-slot[aria-hidden='false'] {
+        z-index: 4;
+        transform: none;
+    }
+
+    .folio-reel .reel-image-slot:nth-child(odd)[aria-hidden='true'] {
+        transform: rotate(2deg);
+    }
+
+    .folio-reel .reel-image-slot:nth-child(even)[aria-hidden='true'] {
+        transform: rotate(-1.5deg);
+    }
+
+    .folio-reel .reel-card {
+        border: 1px solid #2b2b2b;
+        border-radius: 2px;
+        background: #0f0f0f;
+        box-shadow: none;
+    }
+
+    .folio-reel .reel-card[data-kind='project'] {
+        width: min(calc(100% - 64px), 39rem);
+        max-width: none;
+        height: auto;
+        aspect-ratio: 16 / 9 !important;
+        border-color: #3b3b3b;
+    }
+
+    .folio-reel .reel-image-slot[aria-hidden='false'] .reel-card {
+        border-color: #5a5a5a;
+    }
+
+    .folio-reel .reel-card[data-kind='project'] [data-preview-mode='reel'] {
+        background: #0f0f0f;
+    }
+
+    .folio-reel .reel-card[data-kind='project'] [data-preview-mode='reel'] > .z-10 {
+        position: absolute;
+        inset: 0 0 auto;
+        z-index: 2;
+        padding: 10px;
+        background: linear-gradient(to bottom, rgb(8 8 8 / 85%), transparent);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+
+    .folio-reel .reel-card[data-kind='project']:hover [data-preview-mode='reel'] > .z-10,
+    .folio-reel .reel-card[data-kind='project']:focus-within [data-preview-mode='reel'] > .z-10 {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .folio-reel .reel-card[data-kind='project'] [data-preview-mode='reel'] .bottom-3 {
+        opacity: 0;
+        transition: opacity 180ms ease;
+    }
+
+    .folio-reel .reel-card[data-kind='project']:hover [data-preview-mode='reel'] .bottom-3,
+    .folio-reel .reel-card[data-kind='project']:focus-within [data-preview-mode='reel'] .bottom-3 {
+        opacity: 1;
+    }
+
+    .folio-reel [data-slot='badge'] {
+        border-color: #555555;
+        border-radius: 2px;
+        background: transparent;
+        font-family: var(--font-geist-mono), ui-monospace, monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        color: #b8b8b8;
+    }
+
+    .folio-reel[data-active-group='work'] .reel-title[data-kind='about'],
+    .folio-reel[data-active-group='work'] .reel-title[data-kind='resume'],
+    .folio-reel[data-active-group='work'] .reel-title[data-kind='github'] {
+        visibility: hidden;
+    }
+
+    .folio-reel[data-active-group='work'] .reel-card[data-kind='about'],
+    .folio-reel[data-active-group='work'] .reel-card[data-kind='resume'],
+    .folio-reel[data-active-group='work'] .reel-card[data-kind='github'] {
+        visibility: hidden;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+    .folio-reel::after {
+        display: none;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none) {
+        left: 24px;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none {
+        right: 24px;
+    }
+
+    .folio-reel > [data-chrome]:not(.pointer-events-none)::after {
+        left: 24px;
+    }
+
+    .folio-reel > [data-chrome].pointer-events-none > span::after {
+        right: 24px;
+    }
+
+    .folio-reel .reel-title {
+        padding-left: 120px;
+    }
+
+    .folio-reel .reel-title::before {
+        left: 96px;
+    }
+
+    .folio-reel .reel-title > div > span {
+        left: 56px;
+    }
+
+    .folio-reel .reel-titles::after {
+        left: 120px;
+    }
+
+    .folio-reel .reel-card[data-kind='project'] {
+        width: calc(100% - 32px);
+    }
+}

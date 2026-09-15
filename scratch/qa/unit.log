@@ -1,0 +1,36 @@
+(node:441725) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/yahiro/Pictures/portfolio/src/lib/github.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/yahiro/Pictures/portfolio/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ normalizes public profile, repository, and push-event data (34.804971ms)
+✔ returns null when any GitHub request fails (0.632104ms)
+(node:441730) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/yahiro/Pictures/portfolio/src/lib/portfolio.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/yahiro/Pictures/portfolio/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ increasing reel position moves titles up and previews down (2.319236ms)
+✔ only the settled rendered copy mounts a passive live preview (0.395112ms)
+✔ project previews stay posters while live mounting is disabled (0.342486ms)
+✔ shouldMountResumePdf mounts only for settled active resume in reel mode (0.363273ms)
+✔ shouldMountProjectIframe mounts only for live presentation with a URL (0.426302ms)
+✔ interaction is granted only to the exact active rendered copy (1.353938ms)
+✔ projects without a verified embed remain posters (0.34256ms)
+✔ profile item kinds select their matching preview (0.371238ms)
+✔ interaction reducer enters and exits one rendered preview (0.471368ms)
+✔ reduced motion disables automatic and long entrance motion (1.005851ms)
+✔ normal motion leaves the landing row still and preserves detail motion (0.145796ms)
+✔ navigation snaps moving rows and wraps through the nearest copy (0.18001ms)
+✔ portfolio item ids must be unique (0.566337ms)
+✔ live project URLs must use HTTPS (0.145591ms)
+✔ portfolio items map to Work and Profile groups (0.143429ms)
+✔ group position is one-based within the active group (0.200549ms)
+✔ title registers use the approved type scale and weight ranges (0.154459ms)
+✔ resume items require a PDF URL (0.144822ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 195.843937

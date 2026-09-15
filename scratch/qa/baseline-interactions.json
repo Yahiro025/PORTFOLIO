@@ -1,0 +1,1382 @@
+{
+  "samples": [
+    {
+      "label": "desktop load",
+      "counter": "Profile 01/03",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 0,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -720px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -5692.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 10,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 90,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 170,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 250,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 330,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View About",
+          "top": 410,
+          "opacity": "0.88"
+        },
+        {
+          "label": "View Resume",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 7838.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7838.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        }
+      ]
+    },
+    {
+      "label": "wheel without pointer enter",
+      "counter": "Profile 01/03",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 0,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -720px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -5692.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 10,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 90,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 170,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 250,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 330,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View About",
+          "top": 410,
+          "opacity": "0.88"
+        },
+        {
+          "label": "View Resume",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 7838.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7838.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        }
+      ]
+    },
+    {
+      "label": "wheel after pointer enter",
+      "counter": "Work 05/05",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 1,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -640px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -6277.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 90,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 170,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 250,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 330,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 410,
+          "opacity": "1"
+        },
+        {
+          "label": "View About",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Resume",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 650,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 7253.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6668.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 6083.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 5498.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1988.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 1403.27978515625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 795.06005859375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2691.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3276.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -3861.719970703125,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.7197265625,
+          "opacity": "1"
+        }
+      ]
+    },
+    {
+      "label": "BANTAYOG detail",
+      "counter": "Work 01/05",
+      "details": "BANTAYOG",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 2,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -320px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -8617.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [
+        "BANTAYOG·Nutrition Subsidy Platform",
+        "SourceOpen live siteInteractView details"
+      ],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 410,
+          "opacity": "1"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 650,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 730,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View About",
+          "top": 810,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Resume",
+          "top": 890,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 970,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 495.0015869140625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 495.0015869140625,
+          "opacity": "1"
+        }
+      ]
+    },
+    {
+      "label": "closed after 1.2s",
+      "counter": "Work 01/05",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 1,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -320px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -8617.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 410,
+          "opacity": "1"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 650,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 730,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View About",
+          "top": 810,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Resume",
+          "top": 890,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 970,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        }
+      ]
+    },
+    {
+      "label": "wheel after close",
+      "counter": "Work 01/05",
+      "scrollY": 0,
+      "documentHeight": 900,
+      "height": 900,
+      "iframes": 1,
+      "strips": [
+        {
+          "transform": "translate3d(0px, -320px, 0px)",
+          "opacity": "1"
+        },
+        {
+          "transform": "translate3d(0px, -8617.5px, 0px)",
+          "opacity": "1"
+        }
+      ],
+      "hidden": [],
+      "rows": [
+        {
+          "label": "View BANTAYOG",
+          "top": 410,
+          "opacity": "1"
+        },
+        {
+          "label": "View ScholarAid",
+          "top": 490,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Bikol Dictionary",
+          "top": 570,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View TANGLAW",
+          "top": 650,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View C Reviewer",
+          "top": 730,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View About",
+          "top": 810,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View Resume",
+          "top": 890,
+          "opacity": "0.7"
+        },
+        {
+          "label": "View GitHub",
+          "top": 970,
+          "opacity": "0.7"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4913.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 4328.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3743.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 3158.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 2573.2802734375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": 192,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -374.9404296875,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -936.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -1521.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -2106.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -4446.72021484375,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5031.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -5616.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6201.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        },
+        {
+          "label": null,
+          "top": -6786.7197265625,
+          "opacity": "1"
+        }
+      ]
+    }
+  ],
+  "errors": [
+    "Cannot read properties of undefined (reading 'slice')"
+  ],
+  "vitals": {
+    "lcp": [
+      {
+        "time": 240,
+        "size": 40928,
+        "url": "",
+        "element": "<h3 class=\"whitespace-nowrap leading-none tracking-[-0.015em]\" style=\"font-size: 4.83dvh;\">Bikol Dictionary<span class=\"hidden 2xl:inline\"><span class=\"mx-[0.35em] text-[0.7em]\">·</span><span class=\"text-[0.7em]\">Language Learning App</span></span></h3>"
+      }
+    ],
+    "shifts": [
+      {
+        "time": 914.7000000029802,
+        "value": 0.000027806712962962964,
+        "recent": false,
+        "sources": [
+          {
+            "element": "<div data-chrome=\"true\" class=\"pointer-events-none absolute right-6 top-14 z-10 flex items-center gap-3 opacity-0 md:right-12 md:top-10\" style=\"translate: none; rotate: none; scale: none; transform: t",
+            "before": {
+              "x": 1248.921875,
+              "y": 42.09775161743164,
+              "width": 143.046875,
+              "height": 15,
+              "top": 42.09775161743164,
+              "right": 1391.96875,
+              "bottom": 57.09775161743164,
+              "left": 1248.921875
+            },
+            "after": {
+              "x": 1230.921875,
+              "y": 41.75400161743164,
+              "width": 161.078125,
+              "height": 15,
+              "top": 41.75400161743164,
+              "right": 1392,
+              "bottom": 56.75400161743164,
+              "left": 1230.921875
+            }
+          },
+          {
+            "element": "<span class=\"font-mono text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground tabular-nums\" style=\"translate: none; rotate: none; scale: none; opacity: 0.2287; transform: translate3",
+            "before": {
+              "x": 1248.921875,
+              "y": 42.10055160522461,
+              "width": 99.046875,
+              "height": 15,
+              "top": 42.10055160522461,
+              "right": 1347.96875,
+              "bottom": 57.10055160522461,
+              "left": 1248.921875
+            },
+            "after": {
+              "x": 1230.921875,
+              "y": 46.38180160522461,
+              "width": 117.078125,
+              "height": 15,
+              "top": 46.38180160522461,
+              "right": 1348,
+              "bottom": 61.38180160522461,
+              "left": 1230.921875
+            }
+          }
+        ]
+      },
+      {
+        "time": 4612,
+        "value": 0.000023333263004758232,
+        "recent": false,
+        "sources": [
+          {
+            "element": "<div data-chrome=\"true\" class=\"pointer-events-none absolute right-6 top-14 z-10 flex items-center gap-3 opacity-0 md:right-12 md:top-10\" style=\"translate: none; rotate: none; scale: none; transform: t",
+            "before": {
+              "x": 1230.921875,
+              "y": 40,
+              "width": 161.078125,
+              "height": 15,
+              "top": 40,
+              "right": 1392,
+              "bottom": 55,
+              "left": 1230.921875
+            },
+            "after": {
+              "x": 1248.953125,
+              "y": 40,
+              "width": 143.046875,
+              "height": 15,
+              "top": 40,
+              "right": 1392,
+              "bottom": 55,
+              "left": 1248.953125
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
