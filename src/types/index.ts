@@ -51,16 +51,37 @@ interface PortfolioItemBase {
 
 export interface ProjectItem extends PortfolioItemBase {
     kind: 'project'
-    owner: string
-    repo: string
-    sourceUrl: string
+    sourceUrl?: string
     liveUrl?: string
-    embed: boolean
+    embed?: boolean
     posterUrl?: string
     stack: string[]
+    highlights: string[]
     role?: string
-    team?: string
     result?: string
+}
+
+export interface OpenSourceContribution {
+    id: string
+    project: string
+    repo: string
+    stars: number
+    number: number
+    title: string
+    mergedAt: string
+    url: string
+    area: string
+    points: string[]
+}
+
+// One frame in the project orbit: a real screenshot tied to a project or merged PR.
+export interface OrbitCard {
+    id: string
+    src: string
+    width: number
+    height: number
+    ref: string
+    label: string
 }
 
 export interface AboutItem extends PortfolioItemBase {
