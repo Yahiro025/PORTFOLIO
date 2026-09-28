@@ -46,6 +46,9 @@ export const getGroupPosition = (
     }
 }
 
+export const formatCounter = (group: PortfolioGroup, index: number, total: number): string =>
+    `${group === 'work' ? 'WORK' : 'PROFILE'} ${String(index).padStart(2, '0')} / ${String(total).padStart(2, '0')}`
+
 export const getReelOffsets = (
     position: number,
     layout: FolioLayout,
