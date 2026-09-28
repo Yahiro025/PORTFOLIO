@@ -26,7 +26,7 @@ export const parseGitHubContributions = (
     const totalContributions = totalMatch ? parseInt(totalMatch[1].replace(/,/g, ''), 10) : 0
 
     const tooltipMap = new Map<string, number>()
-    const tooltipRegex = /<tool-tip[^>]*for="([^"]+)"[^>]*>(.*?)<\/tool-tip>/gs
+    const tooltipRegex = /<tool-tip[^>]*for="([^"]+)"[^>]*>([\s\S]*?)<\/tool-tip>/g
     let tm: RegExpExecArray | null
     while ((tm = tooltipRegex.exec(html)) !== null) {
         const text = tm[2].trim()

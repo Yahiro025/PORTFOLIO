@@ -110,3 +110,19 @@ test('parses contributions calendar HTML correctly', () => {
     assert.equal(parsed.contributions[1].count, 0)
     assert.equal(parsed.contributions[1].level, 0)
 })
+
+test('parses multiline tooltip content', () => {
+    const html = `
+        <h2>7 contributions in the last year</h2>
+        <table class="ContributionCalendar-grid">
+            <td class="ContributionCalendar-day" data-date="2026-09-14" data-level="1" id="day-3"></td>
+        </table>
+        <tool-tip for="day-3">3 contributions
+on September 14th.</tool-tip>
+    `
+
+    const parsed = parseGitHubContributions(html)
+    assert.equal(parsed.contributions.length, 1)
+    assert.equal(parsed.contributions[0].date, '2026-09-14')
+    assert.equal(parsed.contributions[0].count, 3)
+})

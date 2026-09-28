@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
     getGroup,
     getGroupPosition,
+    formatCounter,
     getMotionPolicy,
     getNavigationPosition,
     getProjectIdFromSearch,
@@ -242,4 +243,9 @@ test('resume items require a PDF URL', () => {
         }]),
         new Error('Resume PDF URL is required: resume')
     )
+})
+
+test('formatCounter renders one register grammar for both groups', () => {
+    assert.equal(formatCounter('work', 2, 5), 'WORK 02 / 05')
+    assert.equal(formatCounter('profile', 1, 3), 'PROFILE 01 / 03')
 })
