@@ -29,7 +29,7 @@ const ProjectRow: FC<{
             >
                 <span
                     className={cn(
-                        'display text-display-lg font-bold transition-[color,transform] duration-500 ease-[var(--ease-out)] group-hover:translate-x-3',
+                        'display text-display-lg font-bold transition-[color,translate] duration-[250ms] ease-[var(--ease-out)] group-hover:translate-x-3',
                         open ? 'text-ember' : 'group-hover:text-ember'
                     )}
                 >
@@ -41,7 +41,7 @@ const ProjectRow: FC<{
                 </span>
                 <span
                     className={cn(
-                        'col-start-2 row-span-2 row-start-1 grid size-12 place-items-center rounded-full border transition-[transform,background-color,border-color,color] duration-500 ease-[var(--ease-out)] md:col-start-3 md:row-span-1',
+                        'col-start-2 row-span-2 row-start-1 grid size-12 place-items-center rounded-full border transition-[rotate,background-color,border-color,color] duration-[250ms] ease-[var(--ease-out)] md:col-start-3 md:row-span-1',
                         open ? 'rotate-45 border-ember bg-ember text-ink' : 'border-bone/30 group-hover:border-bone'
                     )}
                 >
@@ -50,7 +50,7 @@ const ProjectRow: FC<{
             </button>
         </h3>
 
-        <div id={`project-${project.id}`} role='region' aria-label={project.title} className='expand' data-open={open}>
+        <div id={`project-${project.id}`} role='region' aria-label={project.title} className='expand' data-open={open} inert={!open || undefined} aria-hidden={!open}>
             <div>
                 <div className='grid gap-8 pb-12 md:grid-cols-12 md:gap-10'>
                     {project.posterUrl && (
@@ -58,6 +58,7 @@ const ProjectRow: FC<{
                             src={project.posterUrl}
                             alt={`${project.title} interface`}
                             loading='lazy'
+                            decoding='async'
                             className='max-h-[72svh] w-full rounded-[14px] object-cover object-top md:col-span-6'
                         />
                     )}
@@ -86,7 +87,7 @@ const ProjectRow: FC<{
                                     href={project.liveUrl}
                                     target='_blank'
                                     rel='noreferrer'
-                                    className='inline-flex items-center gap-1.5 rounded-full bg-ember px-5 py-3 font-semibold text-ink transition-colors hover:bg-ember-hot'
+                                    className='inline-flex items-center gap-1.5 rounded-full bg-ember px-5 py-3 font-semibold text-ink transition-[background-color,scale] duration-[160ms] ease-[var(--ease-out)] hover:bg-ember-hot active:scale-[0.97]'
                                 >
                                     Open live site
                                     <ArrowUpRight className='size-4' aria-hidden />
@@ -97,7 +98,7 @@ const ProjectRow: FC<{
                                     href={project.sourceUrl}
                                     target='_blank'
                                     rel='noreferrer'
-                                    className='inline-flex items-center gap-1.5 rounded-full border border-bone/35 px-5 py-3 font-semibold transition-colors hover:border-bone hover:bg-bone hover:text-ink'
+                                    className='inline-flex items-center gap-1.5 rounded-full border border-bone/35 px-5 py-3 font-semibold transition-[background-color,border-color,color,scale] duration-[160ms] ease-[var(--ease-out)] hover:border-bone hover:bg-bone hover:text-ink active:scale-[0.97]'
                                 >
                                     Source
                                     <ArrowUpRight className='size-4' aria-hidden />
@@ -203,7 +204,7 @@ export const WorkIndex: FC = (): ReactNode => {
                 className='work-lens pointer-events-none fixed left-0 top-0 z-40 hidden size-[min(22vw,20rem)] overflow-hidden rounded-full bg-ink-2 [@media(hover:hover)_and_(pointer:fine)]:block'
                 data-on={poster ? 'true' : 'false'}
             >
-                {poster && <img src={poster} alt='' className='size-full object-cover' />}
+                {poster && <img src={poster} alt='' decoding='async' className='size-full object-cover' />}
             </div>
 
             <div className='h-24 md:h-36' />

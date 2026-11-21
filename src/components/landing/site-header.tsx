@@ -18,6 +18,7 @@ const NAV = [
 
 export const SiteHeader: FC = (): ReactNode => {
     const [tone, setTone] = useState<Tone>('ink')
+    const [menuOpen, setMenuOpen] = useState(false)
 
     useEffect(() => {
         const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]'))
@@ -78,7 +79,7 @@ export const SiteHeader: FC = (): ReactNode => {
                 Skip to content
             </a>
 
-            <div className='flex items-center justify-between px-5 py-3.5 sm:px-10 sm:py-4'>
+            <div className='flex flex-wrap items-center gap-x-1 px-5 py-3.5 sm:gap-x-2 sm:px-10 sm:py-4'>
                 <a href='#top' className='flex items-center gap-3 whitespace-nowrap text-lead font-semibold tracking-[-0.02em]' aria-label='Bennett Payoyo, back to top'>
                     <span id='dock-target' aria-hidden className='relative hidden size-11 shrink-0 sm:block'>
                         <svg viewBox='-110.5 -137.6 280.3 474.3' className='hero-glyph is-docked dock-mini absolute inset-0 size-full'>
@@ -93,8 +94,26 @@ export const SiteHeader: FC = (): ReactNode => {
                     </span>
                 </a>
 
-                <nav aria-label='Primary' className='flex items-center gap-1 sm:gap-2'>
-                    <ul className='hidden items-center gap-1 md:flex'>
+                <button
+                    type='button'
+                    aria-expanded={menuOpen}
+                    aria-controls='site-nav'
+                    onClick={() => setMenuOpen(open => !open)}
+                    className='order-1 ml-auto rounded-full px-2.5 py-2 text-small md:hidden'
+                >
+                    Menu
+                </button>
+
+                <nav
+                    id='site-nav'
+                    aria-label='Primary'
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                        'order-2 w-full pt-2 md:ml-auto md:w-auto md:pt-0',
+                        menuOpen ? 'flex' : 'hidden md:flex'
+                    )}
+                >
+                    <ul className='flex flex-col md:flex-row md:items-center md:gap-1'>
                         {NAV.map(item => (
                             <li key={item.href}>
                                 <a
@@ -123,27 +142,18 @@ export const SiteHeader: FC = (): ReactNode => {
                             </a>
                         </li>
                     </ul>
-
-                    <a
-                        href={CONTACT.resume}
-                        target='_blank'
-                        rel='noreferrer'
-                        className='rounded-full px-2.5 py-2 text-small max-[359px]:hidden md:hidden'
-                    >
-                        Resume
-                    </a>
-
-                    <a
-                        href='#contact'
-                        data-gravity-well
-                        className={cn(
-                            'whitespace-nowrap rounded-full px-4 py-2.5 text-small font-semibold transition-[background-color,color,transform] duration-500 hover:-translate-y-px sm:px-5',
-                            onDark ? 'bg-ember text-ink hover:bg-ember-hot' : 'bg-ink text-bone hover:bg-ink-2'
-                        )}
-                    >
-                        Get in touch
-                    </a>
                 </nav>
+
+                <a
+                    href='#contact'
+                    data-gravity-well
+                    className={cn(
+                        'order-1 whitespace-nowrap rounded-full px-4 py-2.5 text-small font-semibold transition-[background-color,color,translate,scale] duration-[160ms] ease-[var(--ease-out)] hover:-translate-y-px active:scale-[0.97] sm:px-5 md:order-3',
+                        onDark ? 'bg-ember text-ink hover:bg-ember-hot' : 'bg-ink text-bone hover:bg-ink-2'
+                    )}
+                >
+                    Get in touch
+                </a>
             </div>
 
         </header>

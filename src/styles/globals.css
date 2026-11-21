@@ -329,16 +329,20 @@ body {
 }
 
 @keyframes pulse-dot {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ember) 55%, transparent); }
-    50% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--ember) 0%, transparent); }
+    0% { transform: scale(1); opacity: 0.65; }
+    70%, 100% { transform: scale(2.6); opacity: 0; }
 }
-.pulse-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+.pulse-dot { position: relative; }
+.pulse-dot::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background: var(--ember); animation: pulse-dot 2.4s ease-out infinite;
+}
 
 
 /* Project index: the circular lens follows the pointer on fine pointers only. */
 .work-lens {
     clip-path: circle(0% at 50% 50%);
-    transition: clip-path 600ms var(--ease-out);
+    transition: clip-path 350ms var(--ease-out);
 }
 .work-lens[data-on='true'] {
     clip-path: circle(50% at 50% 50%);
@@ -347,7 +351,7 @@ body {
 .expand {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 650ms var(--ease-out);
+    transition: grid-template-rows 420ms var(--ease-out);
 }
 .expand[data-open='true'] { grid-template-rows: 1fr; }
 .expand > div { min-height: 0; overflow: hidden; }
@@ -355,7 +359,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .body-settle,
-    .pulse-dot { animation: none !important; }
+    .pulse-dot::after { animation: none !important; }
     .work-lens,
     .expand { transition: none !important; }
 }
@@ -438,7 +442,7 @@ html.js-motion .is-risen .rise { transform: none; }
 
 /* Pinned sequence: manifesto flood, orbit of screens, big bang. */
 .seq-stage { background: var(--ink); }
-.seq.is-rich { height: 430vh; }
+.seq.is-rich { height: 620vh; }
 .seq.is-rich .seq-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; z-index: 2; }
 .seq:not(.is-rich) .orbit-layer,
 .seq:not(.is-rich) .orbit-hint { display: none; }
@@ -448,7 +452,9 @@ html.js-motion .is-risen .rise { transform: none; }
 }
 .seq.is-rich .seq-flood { position: absolute; inset: 0; }
 .seq-flood.is-collapsing .manifesto,
-.seq-flood.is-collapsing .mf-ring-field { visibility: hidden; }
+.seq-flood.is-collapsing .mf-ring-field,
+.seq-flood.is-closed .manifesto,
+.seq-flood.is-closed .mf-ring-field { visibility: hidden; }
 @media (min-width: 640px) { .seq-flood { padding-left: 40px; padding-right: 40px; } }
 .manifesto { position: relative; z-index: 1; perspective: 900px; }
 .mf-row, .mf-foot { transform-origin: 50% 50%; }
@@ -469,15 +475,13 @@ html.js-motion .is-struck .mf-underline::after { transform: scaleX(1); }
     position: absolute; left: 50%; top: 50%; z-index: 0; pointer-events: none;
     width: var(--ring-d); height: var(--ring-d);
     margin: calc(var(--ring-d) / -2) 0 0 calc(var(--ring-d) / -2);
-    transform: translateY(var(--ring-y, 0px));
 }
 .mf-ring {
     position: absolute; inset: 0; border-radius: 50%;
-    transform: scale(var(--ring-s, 1));
     background: color-mix(in oklab, var(--bone) 42%, transparent);
     mask: radial-gradient(closest-side, transparent 39.8%, #000 40.4%);
 }
-.mf-ring-spin { position: absolute; inset: 0; transform: scale(var(--sat-s, 1)); }
+.mf-ring-spin { position: absolute; inset: 0; }
 .mf-ring-track { position: absolute; inset: 0; animation: cn-spin 26s linear infinite; }
 .mf-sat {
     position: absolute; left: 50%; top: calc(var(--ring-d) * -0.06);
@@ -492,7 +496,7 @@ html.js-motion .is-struck .mf-underline::after { transform: scaleX(1); }
 .orbit-card {
     position: absolute; top: 0; left: 0; border-radius: 6px; overflow: hidden;
     background: var(--ink-2); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
-    will-change: transform, filter; cursor: pointer;
+    will-change: transform, opacity; cursor: pointer;
 }
 .orbit-card img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; pointer-events: none; -webkit-user-drag: none; }
 .orbit-focus { transform-origin: 0 0; }
@@ -511,55 +515,102 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 .cn-flow .cn-panel { margin-top: 30svh; }
 .cn-anchor { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
 .cn-field {
+    --cn-d: min(112vh, 1080px, 68vw);
+    --u: calc(var(--cn-d) / 640);
     position: absolute; left: 0; top: 0;
-    height: min(112vh, 1080px, 68vw); aspect-ratio: 1;
+    width: var(--cn-d); height: var(--cn-d);
     translate: -50% -50%; opacity: 0; scale: 0.35;
     transition: scale 1.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
 }
 .cn-field.is-born { opacity: 1; scale: 1; }
 .cn-ring { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.22; vector-effect: non-scaling-stroke; }
-.cn-track { transform-origin: 0 0; animation: cn-spin var(--dur, 30s) linear infinite; }
-.cn-counter { transform-origin: 0 0; animation: cn-spin var(--dur, 30s) linear infinite reverse; }
+.cn-track {
+    position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+    transform-origin: 0 0; will-change: transform;
+    animation: cn-spin var(--dur, 30s) linear infinite;
+}
+.cn-offset {
+    position: absolute; left: 0; top: 0; width: 0; height: 0;
+    transform: translate3d(calc(var(--r, 0) * var(--u, 1px)), 0, 0);
+}
+.cn-offset > .cn-track { left: 0; top: 0; }
+.cn-counter {
+    position: absolute; left: 0; top: 0; width: 0; height: 0;
+    transform-origin: 0 0; will-change: transform;
+    animation: cn-spin var(--dur, 30s) linear infinite reverse;
+}
 .cn-field.is-paused .cn-track,
 .cn-field.is-paused .cn-counter,
 .cn-field.is-paused .cn-cases { animation-play-state: paused; }
-.cn-body.is-accent { fill: var(--ember); }
-.cn-body.is-ink { fill: var(--ink); }
-.cn-body.is-ring { fill: var(--bone); stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.cn-icon { fill: none; }
-.cn-icon.is-accent, .cn-icon.is-ring { color: var(--ink); }
-.cn-icon.is-ink { color: var(--bone); }
-.cn-label { fill: var(--muted-on-bone); font-family: var(--font-geist-mono); font-size: 8px; }
-.cn-moon { fill: var(--ink); }
-.cn-guest { fill: var(--ember); opacity: 0; transition: opacity 0.3s ease; }
+.cn-body {
+    position: absolute; left: 0; top: 0;
+    width: calc(var(--s, 20) * 2 * var(--u)); height: calc(var(--s, 20) * 2 * var(--u));
+    translate: -50% -50%; border-radius: 9999px;
+    display: grid; place-items: center;
+}
+.cn-body.is-accent { background: var(--ember); color: var(--ink); }
+.cn-body.is-ink { background: var(--ink); color: var(--bone); }
+.cn-body.is-ring { background: var(--bone); border: max(1.5px, calc(2 * var(--u))) solid var(--ink); color: var(--ink); }
+.cn-label {
+    position: absolute; left: calc(var(--s, 20) * var(--u) + 8 * var(--u)); top: 0;
+    translate: 0 -50%; white-space: nowrap; line-height: 1;
+    font-family: var(--font-geist-mono); font-size: calc(8 * var(--u)); color: var(--muted-on-bone);
+}
+.cn-moon {
+    position: absolute; left: 0; top: 0;
+    width: calc(6.8 * var(--u)); height: calc(6.8 * var(--u));
+    translate: -50% -50%; border-radius: 9999px; background: var(--ink);
+}
+.cn-guest {
+    position: absolute; left: 0; top: 0;
+    width: calc(12 * var(--u)); height: calc(12 * var(--u));
+    translate: -50% -50%; border-radius: 9999px; background: var(--ember);
+    opacity: 0; transition: opacity 0.3s ease;
+}
 .cn-guest.is-in { opacity: 1; }
-.cn-cases { transform-origin: 50% 50%; animation: cn-spin 70s linear infinite; pointer-events: none; }
-.cn-cases-text { fill: var(--ink); opacity: 0.38; font-size: 9px; letter-spacing: 0.03em; }
-.cn-plexus line { stroke: var(--ink); stroke-width: 1; }
+.cn-cases { transform-origin: 50% 50%; animation: cn-spin 70s linear infinite; will-change: transform; pointer-events: none; }
 .cn-center {
-    width: clamp(28px, 3.8vh, 40px); aspect-ratio: 1; opacity: 0;
-    transition: width 0.45s var(--ease-out), opacity 0.6s ease;
+    --cn-c: clamp(124px, 16vh, 144px);
+    width: var(--cn-c); height: var(--cn-c);
+    margin: calc(var(--cn-c) / -2) 0 0 calc(var(--cn-c) / -2);
+    transform: scale(0.28); opacity: 0;
+    transform-origin: 50% 50%; will-change: transform; cursor: pointer;
+    transition: transform 0.45s var(--ease-out), opacity 0.6s ease;
 }
 .cn-sticky:has(.cn-field.is-born) .cn-center { opacity: 1; }
-.cn-center span { opacity: 0; transform: translateY(5px); transition: opacity 0.28s ease 0.06s, transform 0.28s ease 0.06s; }
-.cn-center:hover, .cn-center:focus-visible { width: clamp(112px, 15vh, 140px); }
-.cn-center:hover span, .cn-center:focus-visible span { opacity: 1; transform: none; }
+.cn-center:hover, .cn-center:focus-within, .cn-center.is-open { transform: scale(1); }
+.cn-center:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.cn-center-inner {
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(5px);
+    transition: opacity 0.22s ease 0.06s, transform 0.22s ease 0.06s, visibility 0s linear 0.28s;
+}
+.cn-center:hover .cn-center-inner,
+.cn-center:focus-within .cn-center-inner,
+.cn-center.is-open .cn-center-inner {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+    transition-delay: 0.06s, 0.06s, 0s;
+}
+.cn-center a { pointer-events: none; }
+.cn-center:hover a, .cn-center:focus-within a, .cn-center.is-open a { pointer-events: auto; }
 .cn-dot { transition: opacity 0.2s ease; }
 .cn-dot.is-away { opacity: 0; }
 .cn-fly { position: fixed; left: 0; top: 0; z-index: 3; border-radius: 50%; background: var(--ember); pointer-events: none; opacity: 0; will-change: transform; }
 .cn-fly.is-flying { opacity: 1; }
 @media (max-width: 767px) {
     .cn-sticky { position: relative; height: 96vw; }
-    .cn-field { height: 88vw; }
+    .cn-field { --cn-d: 88vw; }
     .cn-flow { margin-top: 0; padding-top: 2.5rem; }
     .cn-flow .cn-panel { margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cn-center, .cn-center-inner, .cn-center a { transition: none; }
 }
 
 /* That's me: stacked sticky keys and a reading wave. */
 .bio { --bio-top: 22svh; --bio-step: calc(clamp(1.6rem, 3.4vw, 3.4rem) * 1.1); }
 .bio-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr); row-gap: clamp(60px, 10vh, 140px); }
-.bio-label-halt { grid-column: 1; }
-.bio-key-halt { grid-column: 2; }
+.bio-label-halt { grid-column: 1; padding-bottom: calc(3 * var(--bio-step)); }
+.bio-key-halt { grid-column: 2; padding-bottom: calc((3 - var(--i, 0)) * var(--bio-step)); }
 .bio-label, .bio-key { position: sticky; margin: 0; white-space: nowrap; line-height: 1; }
 .bio-label { top: var(--bio-top); }
 .bio-key {
@@ -568,7 +619,7 @@ html.rich-motion .cn-section { margin-top: -100svh; }
     transition: color 0.8s cubic-bezier(0.33, 1, 0.68, 1);
 }
 .bio-key.is-current { color: var(--ember); }
-.bio-slot { grid-column: 3; min-height: 130vh; padding-left: clamp(24px, 4vw, 72px); }
+.bio-slot { grid-column: 3; min-height: 155vh; padding-left: clamp(24px, 4vw, 72px); }
 .bio-hold { position: sticky; top: var(--bio-top); }
 .bio-text { max-width: 36ch; }
 .bio-text .z { transition: color 0.38s ease; }
@@ -582,6 +633,7 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 @media (max-width: 720px) {
     .bio-grid { display: block; }
     .bio-label-halt { position: sticky; top: 72px; z-index: 3; padding-bottom: 0.4em; background: linear-gradient(var(--ink) 75%, transparent); }
+    .bio-key-halt { padding-bottom: 0; }
     .bio-label, .bio-key, .bio-hold { position: static; }
     .bio-key { margin: 0 0 0.32em; }
     .bio-slot { min-height: 0; padding-left: 0; margin-bottom: 14vh; }
@@ -599,16 +651,18 @@ html.rich-motion .cn-section { margin-top: -100svh; }
     transform: scale(calc(0.7 + 0.3 * var(--ring-in, 0)));
 }
 .finale-orb {
+    --orb-base: 12.5svh;
     position: absolute; left: 50%; top: 64%; z-index: 0;
-    width: calc(var(--orb-r, 0px) * 2); aspect-ratio: 1;
-    margin: calc(var(--orb-r, 0px) * -1) 0 0 calc(var(--orb-r, 0px) * -1);
-    transform: translateY(var(--orb-y, 0px));
+    width: calc(var(--orb-base) * 2); aspect-ratio: 1;
+    margin: calc(var(--orb-base) * -1) 0 0 calc(var(--orb-base) * -1);
+    transform: scale(0); /* hidden until setOrb writes the transform */
     border-radius: 50%; background: var(--ember); color: var(--ink);
     display: grid; place-items: center; text-align: center;
     transition: background-color 0.3s ease, scale 0.3s ease;
+    will-change: transform;
 }
 .finale-orb.is-front { z-index: 3; }
-.finale-orb span { font-size: calc(var(--orb-r, 0px) * 0.32); line-height: 1.04; opacity: 0; transition: opacity 0.5s ease; }
+.finale-orb span { font-size: calc(var(--orb-base) * 0.32); line-height: 1.04; opacity: 0; transition: opacity 0.5s ease; }
 .finale-orb em { font-style: normal; font-weight: 700; font-size: 1.2em; }
 .finale-orb.is-cta span { opacity: 1; }
 .finale-orb::before, .finale-orb::after {
@@ -626,7 +680,7 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 /* Footer: only at the very top and the very end. */
 .site-footer {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-    color: #eeebe4; mix-blend-mode: difference;
+    color: var(--bone); mix-blend-mode: difference;
     opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
 }
 .site-footer.is-visible { opacity: 1; pointer-events: auto; }
@@ -649,11 +703,19 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 @media (prefers-reduced-motion: reduce) {
     .mf-ring-track, .cn-track, .cn-counter, .cn-cases, .site-footer-tick i, .orbit-progress::after { animation: none !important; }
     .cn-field { transition: none; }
+    .rise,
+    .mf-strike::after,
+    .mf-underline::after,
+    .bio-underline::after,
+    .finale-orb:hover::before,
+    .finale-orb:hover::after,
+    .finale-orb:focus-visible::before,
+    .finale-orb:focus-visible::after { transition: none !important; animation: none !important; }
 }
 
 /* The header slot opens only once the glyph is on its way. */
 #dock-target { width: 0; margin-right: -12px; transition: width 0.4s var(--ease-out), margin-right 0.4s var(--ease-out); }
-html.is-scrolled #dock-target { width: 44px; margin-right: 0; }
+html:is(.is-scrolled, .glyph-docked, .glyph-flying) #dock-target { width: 44px; margin-right: 0; }
 
 /* The scrolling copy layer passes the pointer through to the constellation beneath. */
 .cn-flow { pointer-events: none; }
@@ -662,4 +724,4 @@ html.is-scrolled #dock-target { width: 44px; margin-right: 0; }
 /* Performance: infinite animations rest while their element is hidden or off-screen. */
 .site-footer:not(.is-visible) .site-footer-tick i,
 .seq-flood.is-offscreen .mf-ring-track,
-.is-offscreen .pulse-dot { animation-play-state: paused; }
+.is-offscreen .pulse-dot::after { animation-play-state: paused; }

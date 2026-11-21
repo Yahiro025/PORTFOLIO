@@ -14,7 +14,15 @@ import {
     pinProgress,
     richMotion
 } from '@/lib/motion'
-import { ORBIT_CARDS, openSource, projects } from '@/constants/folio'
+
+import {
+    OPEN_SOURCE_PR_COUNT,
+    OPEN_SOURCE_REPO_COUNT,
+    OPEN_SOURCE_STARS,
+    ORBIT_CARDS,
+    openSource,
+    projects
+} from '@/constants/folio'
 
 interface Caption {
     title: string
@@ -33,17 +41,17 @@ interface CardState {
     h: number
     z: number
     hover: number
-    lastFilter: string
+    lastOpacity: string
     inFront: boolean | null
     cx: number
     cy: number
 }
 
 // Scroll choreography, as fractions of the pinned wrapper's travel.
-const MASK_START = 0.152
-const MASK_DONE = 0.524
-const ENTRY_DONE = 0.439
-const COLLAPSE_START = 0.767
+const MASK_START = 0.14
+const MASK_DONE = 0.44
+const ENTRY_DONE = 0.38
+const COLLAPSE_START = 0.80
 const FLASH_START = 0.52
 const FLASH_PEAK = 0.72
 const FLASH_GROW = 0.55
@@ -53,7 +61,6 @@ const MASK_MIN_R = 78
 const TEXT_GROW_START = 0.15
 const TEXT_GROW_MAX = 11
 const TEXT_TILT = 24
-const TEXT_BLUR = 10
 const ENTRY_SCALE = 2.3
 const BUMP_END = 0.2
 const BUMP = 0.18
@@ -83,10 +90,11 @@ const captionFor = (card: OrbitCard): Caption => {
             source: project.sourceUrl
         }
     }
-    const pr = openSource.find(item => item.id === card.ref)
+    const repo = openSource.find(item => item.id === card.ref)
+    const pr = repo?.prs.find(item => item.number === card.prNumber)
 
     return {
-        title: pr ? `${pr.project} #${pr.number}` : card.label,
+        title: repo && pr ? `${repo.project} #${pr.number}` : card.label,
         detail: pr?.title ?? '',
         href: pr?.url,
         hrefLabel: 'Read the merged PR'
@@ -94,7 +102,10 @@ const captionFor = (card: OrbitCard): Caption => {
 }
 
 const hexToRgb = (value: string): [number, number, number] => {
-    const hex = value.trim().replace('#', '')
+    const input = value.trim()
+    const rgb = input.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+    if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+    const hex = input.replace('#', '')
     if (!/^[0-9a-f]{6}$/i.test(hex)) return [255, 91, 46]
 
     return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
@@ -117,7 +128,7 @@ const Manifesto: FC = (): ReactNode => (
         </div>
         <div data-row className='mf-row'>
             <Word index={5}>Shipping</Word>{' '}
-            <Word index={6}><span className='mf-strike text-ink/35'>homework</span></Word>{' '}
+            <Word index={6}><s className='mf-strike text-ink/50 no-underline'>homework</s></Word>{' '}
             <Word index={7}>software.</Word>
         </div>
         <div data-row className='mf-foot mt-[4vh] grid items-end gap-6 md:grid-cols-12'>
@@ -126,7 +137,7 @@ const Manifesto: FC = (): ReactNode => (
             </p>
             <div className='mf-copy flex flex-col gap-3 text-body normal-case tracking-normal md:col-span-5 md:col-start-8 lg:col-span-4 lg:col-start-9'>
                 <p>
-                    Most student portfolios stop at mockups. Mine points at merged code: four pull requests accepted in September 2026 by the maintainers of Prettier, pnpm, Tabby and Undici.
+                    Most student portfolios stop at mockups. Mine points at merged code: {OPEN_SOURCE_PR_COUNT} pull requests accepted across {OPEN_SOURCE_REPO_COUNT} open-source repositories totaling {OPEN_SOURCE_STARS}k stars, including Tabby, Prettier, Leaflet, Tiptap, Solid, Hono, pnpm, Undici and Turbo.
                 </p>
                 <p>
                     At home I build for Bicol and for students like me, and I verify what I ship with regression tests, maintainer review and real deployments.
@@ -150,6 +161,7 @@ const StaticStrip: FC = (): ReactNode => (
                             height={card.height}
                             alt={card.label}
                             loading='lazy'
+                            decoding='async'
                             className='w-full rounded-[14px] object-cover'
                         />
                         <p className='mt-3 text-lead font-semibold'>{caption.title}</p>
@@ -168,7 +180,7 @@ const StaticStrip: FC = (): ReactNode => (
 )
 
 export const Sequence: FC = (): ReactNode => {
-    const [rich, setRich] = useState(false)
+    const [rich, setRich] = useState<boolean | null>(null)
     const [focused, setFocused] = useState<OrbitCard | null>(null)
     const [slide, setSlide] = useState(0)
     const wrapRef = useRef<HTMLDivElement>(null)
@@ -176,6 +188,8 @@ export const Sequence: FC = (): ReactNode => {
     const floodRef = useRef<HTMLElement>(null)
     const manifestRef = useRef<HTMLDivElement>(null)
     const ringFieldRef = useRef<HTMLDivElement>(null)
+    const ringElRef = useRef<HTMLDivElement>(null)
+    const ringSpinRef = useRef<HTMLDivElement>(null)
     const satRef = useRef<HTMLElement>(null)
     const curveRef = useRef<SVGPathElement>(null)
     const backRef = useRef<HTMLDivElement>(null)
@@ -186,6 +200,7 @@ export const Sequence: FC = (): ReactNode => {
     const overlayRef = useRef<HTMLDivElement>(null)
     const openFocusRef = useRef<(index: number) => void>(() => {})
     const closeFocusRef = useRef<() => void>(() => {})
+    const slideCountRef = useRef(0)
 
     useEffect(() => setRich(richMotion()), [])
 
@@ -213,29 +228,43 @@ export const Sequence: FC = (): ReactNode => {
         render()
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
         // Flat at rest; on arrival the edge swells up, then settles with a wobble.
-        // GSAP is fetched after hydration so it never weighs on the first load.
+        // GSAP is fetched on first entry so it never weighs on the first load.
         let timeline: { play: () => unknown; reverse: () => unknown; kill: () => unknown } | null = null
         let pending: 'play' | 'reverse' | null = null
+        let loading = false
         let cancelled = false
-        import('gsap').then(({ default: gsap }) => {
-            if (cancelled) return
-            timeline = gsap.timeline({ paused: true, onUpdate: render })
-                .to(state, { v: -140, duration: 0.3, ease: 'power2.out' })
-                .to(state, { v: 0, duration: 0.55, ease: 'none' })
-                .to(state, { v: 22, duration: 0.17, ease: 'none' })
-                .to(state, { v: -12, duration: 0.16, ease: 'none' })
-                .to(state, { v: 0, duration: 0.12, ease: 'none' })
-            if (pending === 'play') timeline.play()
-            else if (pending === 'reverse') timeline.reverse()
-        }).catch(() => undefined)
+        const loadGsap = () => {
+            if (loading) return
+            loading = true
+            import('gsap').then(({ default: gsap }) => {
+                if (cancelled) return
+                const sleep = () => { requestAnimationFrame(() => gsap.ticker.sleep()) }
+                timeline = gsap.timeline({ paused: true, onUpdate: render, onComplete: sleep, onReverseComplete: sleep })
+                    .to(state, { v: -140, duration: 0.3, ease: 'power2.out' })
+                    .to(state, { v: 0, duration: 0.55, ease: 'none' })
+                    .to(state, { v: 22, duration: 0.17, ease: 'none' })
+                    .to(state, { v: -12, duration: 0.16, ease: 'none' })
+                    .to(state, { v: 0, duration: 0.12, ease: 'none' })
+                if (pending === 'play') timeline.play()
+                else if (pending === 'reverse') timeline.reverse()
+                else sleep()
+            }).catch(() => undefined)
+        }
         const observer = new IntersectionObserver(([entry]) => {
             const action = entry.isIntersecting ? 'play' : entry.boundingClientRect.top > 0 ? 'reverse' : null
             if (!action) return
-            if (!timeline) pending = action
-            else if (action === 'play') timeline.play()
-            else timeline.reverse()
+            if (!timeline) {
+                if (action === 'play' || loading) {
+                    pending = action
+                    loadGsap()
+                }
+            } else if (action === 'play') {
+                timeline.play()
+            } else {
+                timeline.reverse()
+            }
         }, { rootMargin: '0px 0px -15% 0px' })
-        observer.observe(path)
+        observer.observe(path.ownerSVGElement ?? path)
 
         return () => {
             cancelled = true
@@ -346,12 +375,14 @@ export const Sequence: FC = (): ReactNode => {
         const flood = floodRef.current
         const manifest = manifestRef.current
         const ringField = ringFieldRef.current
+        const ringEl = ringElRef.current
+        const ringSpin = ringSpinRef.current
         const back = backRef.current
         const front = frontRef.current
         const worldBack = worldBackRef.current
         const worldFront = worldFrontRef.current
         const hint = hintRef.current
-        if (!wrap || !stage || !flood || !manifest || !ringField || !back || !front || !worldBack || !worldFront || !hint) return
+        if (!wrap || !stage || !flood || !manifest || !ringField || !ringEl || !ringSpin || !back || !front || !worldBack || !worldFront || !hint) return
 
         const root = document.documentElement
         const rows = Array.from(manifest.querySelectorAll<HTMLElement>('[data-row]'))
@@ -410,7 +441,7 @@ export const Sequence: FC = (): ReactNode => {
                 h: 0,
                 z: 0,
                 hover: 0,
-                lastFilter: '',
+                lastOpacity: '',
                 inFront: null,
                 cx: 0,
                 cy: 0
@@ -431,12 +462,16 @@ export const Sequence: FC = (): ReactNode => {
         }
         sizeCards()
         // Card elements and their images are created only as the section approaches.
-        const builder = new IntersectionObserver(([entry]) => {
-            if (!entry.isIntersecting || cards.length) return
+        const ensureCards = () => {
+            if (cards.length) return
             cards = build()
             sizeCardEls()
             builder.disconnect()
-        }, { rootMargin: '150% 0px' })
+        }
+        const builder = new IntersectionObserver(([entry]) => {
+            if (!entry.isIntersecting) return
+            ensureCards()
+        }, { rootMargin: '0px 0px -15% 0px' })
         builder.observe(wrap)
 
         let raw = 0
@@ -460,9 +495,12 @@ export const Sequence: FC = (): ReactNode => {
         let stopOrbit: (() => void) | null = null
         let lastFrame = 0
         let hovered: number | null = null
+        let hitSkip = 0
+        let pointerMoved = true
         let rect = wrap.getBoundingClientRect()
-        let accentRgb: [number, number, number] = [255, 91, 46]
+        let accentRgb: [number, number, number] = hexToRgb(root.style.getPropertyValue('--ember') || getComputedStyle(root).getPropertyValue('--ember'))
         let wasFar = false
+        let wasClosed = false
 
         const collapseAmount = () => clamp01((raw - COLLAPSE_START) / (1 - COLLAPSE_START))
 
@@ -498,6 +536,8 @@ export const Sequence: FC = (): ReactNode => {
             overlay.style.height = `${h}px`
             const from = pendingFrom
             pendingFrom = null
+            overlay.getAnimations().forEach(animation => animation.cancel())
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
             overlay.animate([
                 { transform: `translate(${from.left - left}px, ${from.top - top}px) scale(${from.width / w}, ${from.height / h})` },
                 { transform: 'none' }
@@ -510,7 +550,9 @@ export const Sequence: FC = (): ReactNode => {
 
                 return
             }
+            ensureCards()
             const card = cards[index]
+            if (!card) return
             pendingFrom = (card.inFront ? card.front : card.back).getBoundingClientRect()
             focusIndex = index
             setFocused(card.data)
@@ -529,6 +571,12 @@ export const Sequence: FC = (): ReactNode => {
             }
             const target = (card.inFront ? card.front : card.back).getBoundingClientRect()
             const box = overlay.getBoundingClientRect()
+            overlay.getAnimations().forEach(animation => animation.cancel())
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                setFocused(null)
+
+                return
+            }
             const anim = overlay.animate([
                 { transform: 'none', opacity: 1 },
                 {
@@ -536,7 +584,9 @@ export const Sequence: FC = (): ReactNode => {
                     opacity: 0.6
                 }
             ], { duration: 520, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', fill: 'forwards' })
-            anim.onfinish = () => setFocused(null)
+            anim.onfinish = () => {
+                if (focusIndex === null) setFocused(null)
+            }
         }
         closeFocusRef.current = closeFocus
 
@@ -544,6 +594,7 @@ export const Sequence: FC = (): ReactNode => {
             const vw = window.innerWidth
             const vh = window.innerHeight
             const progress = clamp01((raw - MASK_START) / (MASK_DONE - MASK_START))
+            const closed = progress >= 1
             const maxR = Math.hypot(vw, vh) / 2 * 1.05
             let r = maxR + (MASK_MIN_R - maxR) * progress
             const col = collapseAmount()
@@ -571,28 +622,32 @@ export const Sequence: FC = (): ReactNode => {
             }
             flood.style.backgroundColor = color
             flood.classList.toggle('is-collapsing', col > 0)
+            flood.classList.toggle('is-closed', closed)
             flood.style.clipPath = `circle(${Math.max(0, r).toFixed(1)}px at 50% 50%)`
 
-            // The manifesto flies at the viewer as the disc closes.
-            const grow = clamp01((progress - TEXT_GROW_START) / (1 - TEXT_GROW_START))
-            const eased = grow * grow * grow
-            const scale = 1 + eased * TEXT_GROW_MAX
-            const fade = 1 - clamp01((progress - 0.94) / 0.06)
-            const center = (rows.length - 1) / 2
-            rows.forEach((row, i) => {
-                const d = center ? (i - center) / center : 0
-                row.style.transform = `translateY(${(rowOffsets[i] * (scale - 1)).toFixed(1)}px) scale(${scale.toFixed(3)}) rotateX(${(d * TEXT_TILT * eased).toFixed(2)}deg)`
-                row.style.opacity = fade.toFixed(3)
-                row.style.filter = eased > 0.005 ? `blur(${(eased * TEXT_BLUR).toFixed(2)}px)` : ''
-            })
+            // Once closed, the manifesto and ring are hidden and parked: write them on entry only.
+            if (!closed || !wasClosed) {
+                // The manifesto flies at the viewer as the disc closes.
+                const grow = clamp01((progress - TEXT_GROW_START) / (1 - TEXT_GROW_START))
+                const eased = grow * grow * grow
+                const scale = 1 + eased * TEXT_GROW_MAX
+                const fade = 1 - clamp01((progress - 0.94) / 0.06)
+                const center = (rows.length - 1) / 2
+                rows.forEach((row, i) => {
+                    const d = center ? (i - center) / center : 0
+                    row.style.transform = `translateY(${(rowOffsets[i] * (scale - 1)).toFixed(1)}px) scale(${scale.toFixed(3)}) rotateX(${(d * TEXT_TILT * eased).toFixed(2)}deg)`
+                    row.style.opacity = fade.toFixed(3)
+                })
 
-            // Ring rises into place, then melts away ahead of its satellite.
-            const ringT = clamp01((vh - rect.top) / (vh + MASK_START * (wrap.offsetHeight - vh)))
-            const ringE = easeOutCubic(ringT)
-            const grown = 0.62 + 0.38 * ringE
-            ringField.style.setProperty('--ring-y', `${((1 - ringE) * -0.24 * vh).toFixed(1)}px`)
-            ringField.style.setProperty('--ring-s', (Math.pow(clamp01(1 - progress / 0.5), 1.3) * grown).toFixed(4))
-            ringField.style.setProperty('--sat-s', (Math.pow(clamp01(1 - Math.max(0, progress - 0.1) / 0.5), 1.3) * grown).toFixed(4))
+                // Ring rises into place, then melts away ahead of its satellite.
+                const ringT = clamp01((vh - rect.top) / (vh + MASK_START * (rect.height - vh)))
+                const ringE = easeOutCubic(ringT)
+                const grown = 0.62 + 0.38 * ringE
+                ringField.style.transform = `translateY(${((1 - ringE) * -0.24 * vh).toFixed(1)}px)`
+                ringEl.style.transform = `scale(${(Math.pow(clamp01(1 - progress / 0.5), 1.3) * grown).toFixed(4)})`
+                ringSpin.style.transform = `scale(${(Math.pow(clamp01(1 - Math.max(0, progress - 0.1) / 0.5), 1.3) * grown).toFixed(4)})`
+            }
+            wasClosed = closed
 
             // Hint on the disc; the orbit is live between the closed disc and the collapse.
             const hintIn = clamp01((progress - 0.9) / 0.1)
@@ -615,10 +670,13 @@ export const Sequence: FC = (): ReactNode => {
                 active = shouldRun
                 back.style.visibility = active ? 'visible' : 'hidden'
                 front.style.visibility = active ? 'visible' : 'hidden'
-                if (active && !stopOrbit) {
-                    lastFrame = 0
-                    stopOrbit = addLoop(orbitJob)
-                } else if (!active && stopOrbit) {
+                if (active) {
+                    ensureCards()
+                    if (!stopOrbit) {
+                        lastFrame = 0
+                        stopOrbit = addLoop(orbitJob)
+                    }
+                } else if (stopOrbit) {
                     stopOrbit()
                     stopOrbit = null
                 }
@@ -626,7 +684,17 @@ export const Sequence: FC = (): ReactNode => {
         }
 
         const orbitRead = () => {
-            hovered = inside && interactive && !dragging && focusIndex === null ? cardAt(pointerX, pointerY) : null
+            const canHit = inside && interactive && !dragging && focusIndex === null && pointerX >= 0 && pointerY >= 0
+            if (!canHit) {
+                hovered = null
+            } else {
+                if (pointerMoved || hitSkip <= 0) {
+                    hovered = cardAt(pointerX, pointerY)
+                    pointerMoved = false
+                    hitSkip = 5
+                }
+                hitSkip -= 1
+            }
             cards.forEach((card, i) => {
                 if (card.hover <= 0.01 && i !== hovered) return
                 const r = card.front.getBoundingClientRect()
@@ -700,7 +768,7 @@ export const Sequence: FC = (): ReactNode => {
                     card.inFront = inFront
                     card.front.style.visibility = inFront ? 'visible' : 'hidden'
                     card.back.style.visibility = inFront ? 'hidden' : 'visible'
-                    card.lastFilter = ''
+                    card.lastOpacity = ''
                 }
                 const el = inFront ? card.front : card.back
                 card.hover += ((hovered === i ? 1 : 0) - card.hover) * Math.min(1, dt * 9)
@@ -718,11 +786,10 @@ export const Sequence: FC = (): ReactNode => {
                 const transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, ${pz.toFixed(1)}px) ${billboard} translate(${magX.toFixed(1)}px, ${magY.toFixed(1)}px) scale(${scale.toFixed(3)})`
                 el.style.transform = transform
 
-                const brightness = (0.26 + 0.74 * depth) * dim
-                const filter = `brightness(${brightness.toFixed(2)}) blur(${((1 - depth) * 8).toFixed(1)}px)`
-                if (filter !== card.lastFilter) {
-                    card.lastFilter = filter
-                    el.style.filter = filter
+                const opacity = ((0.26 + 0.74 * depth) * dim).toFixed(2)
+                if (opacity !== card.lastOpacity) {
+                    card.lastOpacity = opacity
+                    el.style.opacity = opacity
                 }
             })
 
@@ -734,11 +801,13 @@ export const Sequence: FC = (): ReactNode => {
         }
         const orbitJob: FrameJob = { read: orbitRead, write: tick }
 
+        const refreshAccent = () => {
+            accentRgb = hexToRgb(root.style.getPropertyValue('--ember') || getComputedStyle(root).getPropertyValue('--ember'))
+        }
         const floodJob: FrameJob = {
             read: () => {
                 rect = wrap.getBoundingClientRect()
                 raw = pinProgress(wrap, rect)
-                if (raw > COLLAPSE_START) accentRgb = hexToRgb(getComputedStyle(root).getPropertyValue('--ember'))
             },
             write: () => {
                 // Far from the viewport nothing here is visible: settle once, then skip.
@@ -763,6 +832,7 @@ export const Sequence: FC = (): ReactNode => {
         const onMove = (event: PointerEvent) => {
             pointerX = event.clientX
             pointerY = event.clientY
+            pointerMoved = true
             if (!dragging) return
             const dx = event.clientX - lastX
             const dy = event.clientY - lastY
@@ -791,13 +861,32 @@ export const Sequence: FC = (): ReactNode => {
         const onLeave = () => {
             inside = false
             dragging = false
+            hovered = null
+            pointerMoved = true
+            pointerX = -1
+            pointerY = -1
             setCursor('')
         }
         const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') closeFocus()
+            if (event.key === 'Escape') {
+                closeFocus()
+
+                return
+            }
+            if (focusIndex === null) return
+            const total = slideCountRef.current
+            if (total < 1) return
+            if (event.key === 'ArrowRight') {
+                event.preventDefault()
+                setSlide(index => (index + 1) % total)
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                setSlide(index => (index - 1 + total) % total)
+            }
         }
         const onResize = () => {
             wasFar = false
+            wasClosed = false
             sizeCards()
             sizeCardEls()
             measureRows()
@@ -809,6 +898,7 @@ export const Sequence: FC = (): ReactNode => {
         window.addEventListener('scroll', updateFlood, { passive: true })
         window.addEventListener('resize', onResize)
         window.addEventListener('keydown', onKey)
+        document.addEventListener('click', refreshAccent)
         front.addEventListener('pointerdown', onDown)
         front.addEventListener('pointermove', onMove)
         front.addEventListener('pointerup', onUp)
@@ -822,6 +912,7 @@ export const Sequence: FC = (): ReactNode => {
             window.removeEventListener('scroll', updateFlood)
             window.removeEventListener('resize', onResize)
             window.removeEventListener('keydown', onKey)
+            document.removeEventListener('click', refreshAccent)
             front.removeEventListener('pointerdown', onDown)
             front.removeEventListener('pointermove', onMove)
             front.removeEventListener('pointerup', onUp)
@@ -840,6 +931,7 @@ export const Sequence: FC = (): ReactNode => {
         : [], [focused])
 
     useEffect(() => {
+        slideCountRef.current = slides.length
         setSlide(0)
         if (slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
         const timer = window.setInterval(() => setSlide(index => (index + 1) % slides.length), SLIDE_MS)
@@ -866,8 +958,8 @@ export const Sequence: FC = (): ReactNode => {
 
                     <section ref={floodRef} aria-label='Manifesto' className='seq-flood tone-ember relative z-20'>
                         <div ref={ringFieldRef} aria-hidden className='mf-ring-field'>
-                            <div className='mf-ring' />
-                            <div className='mf-ring-spin'>
+                            <div ref={ringElRef} className='mf-ring' />
+                            <div ref={ringSpinRef} className='mf-ring-spin'>
                                 <div className='mf-ring-track'>
                                     <i ref={satRef} className='mf-sat' />
                                 </div>
@@ -889,6 +981,21 @@ export const Sequence: FC = (): ReactNode => {
                         <span className='block'>to</span>
                         <span className='block'>orbit</span>
                     </div>
+
+                    {rich && (
+                        <div className='sr-only focus-within:not-sr-only focus-within:absolute focus-within:left-5 focus-within:top-20 focus-within:z-50 focus-within:flex focus-within:flex-wrap focus-within:gap-2 focus-within:rounded-2xl focus-within:bg-ink/95 focus-within:p-3'>
+                            {ORBIT_CARDS.map((card, index) => (
+                                <button
+                                    key={card.id}
+                                    type='button'
+                                    onClick={() => openFocusRef.current(index)}
+                                    className='rounded-full border border-bone/35 px-3 py-2 text-small font-semibold text-bone transition-colors hover:border-bone hover:bg-bone hover:text-ink'
+                                >
+                                    {card.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -906,6 +1013,7 @@ export const Sequence: FC = (): ReactNode => {
                     </div>
                     <div
                         role='dialog'
+                        aria-modal='true'
                         aria-label={current?.label}
                         className='orbit-caption fixed inset-x-0 bottom-[5vh] z-50 mx-auto flex w-[min(92vw,44rem)] flex-wrap items-end justify-between gap-4 text-bone'
                     >
@@ -920,7 +1028,7 @@ export const Sequence: FC = (): ReactNode => {
                                         type='button'
                                         onClick={() => setSlide(index => (index + 1) % slides.length)}
                                         aria-label='Next screen'
-                                        className='grid size-8 place-items-center rounded-full border border-bone/35 transition-colors hover:border-bone hover:bg-bone hover:text-ink'
+                                        className='grid size-10 place-items-center rounded-full border border-bone/35 transition-colors hover:border-bone hover:bg-bone hover:text-ink'
                                     >
                                         <ChevronRight className='size-4' aria-hidden />
                                     </button>
@@ -958,7 +1066,7 @@ export const Sequence: FC = (): ReactNode => {
                 </>
             )}
 
-            {!rich && <StaticStrip />}
+            {rich === false && <StaticStrip />}
         </>
     )
 }

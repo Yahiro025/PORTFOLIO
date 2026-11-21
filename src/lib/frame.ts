@@ -8,17 +8,17 @@ export interface FrameJob {
 
 const once = new Set<FrameJob>()
 const loops = new Set<FrameJob>()
-let before: ((time: number) => void) | null = null
+let before: ((time: number) => boolean | void) | null = null
 let raf = 0
 
 const flush = (time: number) => {
     raf = 0
-    before?.(time)
+    const keepBefore = before ? before(time) !== false : false
     const jobs = [...loops, ...once]
     once.clear()
     for (const job of jobs) job.read?.()
     for (const job of jobs) job.write?.()
-    if ((loops.size || before) && !raf) raf = requestAnimationFrame(flush)
+    if ((loops.size || once.size || keepBefore) && !raf) raf = requestAnimationFrame(flush)
 }
 
 const schedule = () => {
@@ -42,7 +42,13 @@ export const addLoop = (job: FrameJob): (() => void) => {
 }
 
 // Runs ahead of every frame's reads, e.g. smooth scrolling, so its scroll never lands after layout reads.
-export const setBeforeFrame = (fn: ((time: number) => void) | null): void => {
+// Returning false lets the loop idle until something calls wakeFrame().
+export const setBeforeFrame = (fn: ((time: number) => boolean | void) | null): void => {
     before = fn
     if (fn) schedule()
+}
+
+// Restarts an idled frame loop, e.g. when new input means the before-frame has work again.
+export const wakeFrame = (): void => {
+    schedule()
 }

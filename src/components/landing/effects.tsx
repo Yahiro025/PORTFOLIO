@@ -4,7 +4,7 @@ import type { FrameJob } from '@/lib/frame'
 import { useEffect, useRef } from 'react'
 import Lenis from 'lenis'
 
-import { addLoop, setBeforeFrame } from '@/lib/frame'
+import { addLoop, setBeforeFrame, wakeFrame } from '@/lib/frame'
 import { finePointer, prefersReducedMotion, richMotion } from '@/lib/motion'
 
 // Every click shifts the one accent body to the next colour; ink text stays legible on all three.
@@ -44,8 +44,6 @@ const GravityCursor: FC = (): ReactNode => {
         let well: HTMLElement | null = null
         let releaseTimer = 0
         let restTimer = 0
-        let downX = 0
-        let downY = 0
 
         // Wells are static page elements: collect them once.
         const wells = Array.from(document.querySelectorAll<HTMLElement>('[data-gravity-well]'))
@@ -53,6 +51,7 @@ const GravityCursor: FC = (): ReactNode => {
         let nearestDistance = Infinity
         let wellRect: DOMRect | null = null
         let captureDirty = false
+        let restDirty = false
         let onAccent = false
         let pointerMoved = false
         let skip = 0
@@ -110,6 +109,12 @@ const GravityCursor: FC = (): ReactNode => {
                     captureDirty = false
                     applyCapture()
                 }
+                // Rest follows capture, so `well` is the body the cursor just settled on.
+                if (restDirty) {
+                    restDirty = false
+                    if (well) window.clearTimeout(restTimer)
+                    else scheduleRest()
+                }
                 const now = performance.now()
                 const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60
                 last = now
@@ -156,29 +161,13 @@ const GravityCursor: FC = (): ReactNode => {
             }
             root.classList.add('is-live')
             pointerMoved = true
-            readCapture()
-            applyCapture()
-            if (well) window.clearTimeout(restTimer)
-            else scheduleRest()
+            // Capture reads and writes happen in the frame job, never inside the pointer event.
+            captureDirty = true
+            restDirty = true
             wake()
         }
 
-        const onDown = (event: PointerEvent) => {
-            downX = event.clientX
-            downY = event.clientY
-            root.classList.remove('is-resting')
-        }
-
-        // Inside the capture field a click anywhere lands on the well.
-        const onClick = (event: MouseEvent) => {
-            if (event.button !== 0 || !well) return
-            if (Math.abs(event.clientX - downX) > 8 || Math.abs(event.clientY - downY) > 8) return
-            if ((event.target as HTMLElement).closest('a, button, input, [role="button"]')) return
-            if (distanceToRect(well.getBoundingClientRect(), event.clientX, event.clientY) > CAPTURE_PX) return
-            event.preventDefault()
-            event.stopPropagation()
-            well.click()
-        }
+        const onDown = () => root.classList.remove('is-resting')
 
         const onLeave = () => root.classList.remove('is-live', 'is-resting')
         const onScroll = () => {
@@ -188,14 +177,12 @@ const GravityCursor: FC = (): ReactNode => {
 
         window.addEventListener('pointermove', onMove, { passive: true })
         window.addEventListener('pointerdown', onDown, { passive: true })
-        window.addEventListener('click', onClick, true)
         window.addEventListener('scroll', onScroll, { passive: true })
         document.documentElement.addEventListener('pointerleave', onLeave)
 
         return () => {
             window.removeEventListener('pointermove', onMove)
             window.removeEventListener('pointerdown', onDown)
-            window.removeEventListener('click', onClick, true)
             window.removeEventListener('scroll', onScroll)
             document.documentElement.removeEventListener('pointerleave', onLeave)
             window.clearTimeout(releaseTimer)
@@ -225,8 +212,11 @@ export const Effects: FC = (): ReactNode => {
         root.classList.toggle('rich-motion', richMotion())
 
         let accent = 0
+        // The frame loop idles once Lenis settles; input has to wake it again.
+        let wakeSmooth = (): void => {}
         const onClick = (event: MouseEvent) => {
             if (event.button !== 0) return
+            wakeSmooth()
             accent = (accent + 1) % ACCENTS.length
             const next = ACCENTS[accent]
             root.style.setProperty('--ember', next.base)
@@ -238,7 +228,8 @@ export const Effects: FC = (): ReactNode => {
         let lenis: Lenis | undefined
         if (!reduced) {
             lenis = new Lenis({
-                duration: 1.05,
+                duration: 1.35,
+                wheelMultiplier: 0.65,
                 smoothWheel: true,
                 syncTouch: false,
                 anchors: true,
@@ -246,11 +237,42 @@ export const Effects: FC = (): ReactNode => {
                 prevent: node => node.hasAttribute('data-lenis-prevent')
             })
             const smooth = lenis
-            setBeforeFrame(time => smooth.raf(time))
+            // Two extra frames let the last easing step land before the loop goes idle.
+            let settleFrames = 0
+            // Lenis eases by the gap since the last timestamp it saw, so a long idle gap must not become one huge step.
+            let clock = 0
+            setBeforeFrame(time => {
+                clock = clock ? clock + Math.min(48, time - clock) : time
+                smooth.raf(clock)
+                if (smooth.isScrolling) {
+                    settleFrames = 2
+
+                    return true
+                }
+                if (settleFrames > 0) {
+                    settleFrames -= 1
+
+                    return true
+                }
+
+                return false
+            })
+            wakeSmooth = () => {
+                settleFrames = 2
+                wakeFrame()
+            }
+            window.addEventListener('wheel', wakeSmooth, { passive: true })
+            window.addEventListener('touchstart', wakeSmooth, { passive: true })
+            window.addEventListener('touchmove', wakeSmooth, { passive: true })
+            window.addEventListener('keydown', wakeSmooth, { passive: true })
         }
 
         return () => {
             document.removeEventListener('click', onClick)
+            window.removeEventListener('wheel', wakeSmooth)
+            window.removeEventListener('touchstart', wakeSmooth)
+            window.removeEventListener('touchmove', wakeSmooth)
+            window.removeEventListener('keydown', wakeSmooth)
             setBeforeFrame(null)
             lenis?.destroy()
         }

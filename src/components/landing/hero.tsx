@@ -52,7 +52,7 @@ interface Transform {
     scale: number
 }
 
-const PROOF = 'Computer Science student at PUP Manila. Four pull requests merged into Prettier, pnpm, Tabby and Node.js’s Undici.'
+const PROOF = 'Computer Science student at PUP Manila. 27 pull requests merged across 16 open-source projects including Tabby, Prettier, Leaflet, Solid, Hono and Node.js’s Undici.'
 
 // Orbit feel: seconds, radians, and design units (unit, rescaled per viewport).
 const OMEGA = (2 * Math.PI) / 1.3
@@ -624,6 +624,10 @@ export const Hero: FC = (): ReactNode => {
             window.clearTimeout(hintTimer)
             stopLoop?.()
             animation?.cancel()
+            chars.forEach(c => { c.style.opacity = '' })
+            if (taglineRef.current) taglineRef.current.style.opacity = ''
+            fadeRef.current?.style.removeProperty('--fade')
+            if (portrait) portrait.style.transform = ''
             root.classList.remove('glyph-docked', 'glyph-flying', 'hint-live')
         }
     }, [])
@@ -633,7 +637,7 @@ export const Hero: FC = (): ReactNode => {
             id='top'
             data-tone='ink'
             ref={heroRef}
-            className='relative flex min-h-[100svh] cursor-crosshair flex-col overflow-hidden bg-[radial-gradient(ellipse_70%_60%_at_45%_42%,#2a2926_0%,var(--ink)_68%)]'
+            className='relative flex min-h-[100svh] cursor-crosshair flex-col overflow-hidden bg-[radial-gradient(ellipse_70%_60%_at_45%_42%,var(--ink-line)_0%,var(--ink)_68%)]'
         >
             <DepthPortrait className='hero-portrait pointer-events-none absolute right-[-12%] top-[4.5rem] z-0 h-[54svh] grayscale contrast-[1.08] [mask-image:linear-gradient(to_bottom,#000_55%,transparent_94%)] md:bottom-[4.25rem] md:left-[24%] md:right-auto md:top-auto md:h-[86svh]' />
 
@@ -683,14 +687,14 @@ export const Hero: FC = (): ReactNode => {
                     <div className='mt-2 flex flex-wrap items-center gap-3'>
                         <a
                             href='#work'
-                            className='group inline-flex items-center gap-2 rounded-full bg-ember px-6 py-3.5 font-semibold text-ink transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-ember-hot'
+                            className='group inline-flex items-center gap-2 rounded-full bg-ember px-6 py-3.5 font-semibold text-ink transition-[background-color,translate,scale] duration-[160ms] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:bg-ember-hot active:scale-[0.97]'
                         >
                             See the work
                             <ArrowRight className='size-4 transition-transform duration-300 group-hover:translate-x-0.5' aria-hidden />
                         </a>
                         <a
                             href='#contact'
-                            className='inline-flex items-center rounded-full border border-bone/35 px-6 py-3.5 font-semibold transition-colors duration-300 hover:border-bone hover:bg-bone hover:text-ink'
+                            className='inline-flex items-center rounded-full border border-bone/35 px-6 py-3.5 font-semibold transition-[background-color,border-color,color,scale] duration-[160ms] ease-[var(--ease-out)] hover:border-bone hover:bg-bone hover:text-ink active:scale-[0.97]'
                         >
                             Get in touch
                         </a>

@@ -36,16 +36,75 @@ const orbPath = (g: number) => {
     return -APEX_Y * (1 - (b < 0.5 ? 2 * b * b : 1 - Math.pow(-2 * b + 2, 2) / 2))
 }
 
+interface ManilaClock {
+    date: string
+    label: string
+    offset: string
+    dateTime: string
+    year: string
+}
+
 const useManilaTime = () => {
-    const [time, setTime] = useState<string | null>(null)
+    const [time, setTime] = useState<ManilaClock | null>(null)
 
     useEffect(() => {
-        const format = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CONTACT.timeZone })
-        const update = () => setTime(format.format(new Date()))
-        update()
-        const timer = window.setInterval(update, 30_000)
+        const clock = new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: CONTACT.timeZone,
+            timeZoneName: 'shortOffset'
+        })
+        const displayDate = new Intl.DateTimeFormat('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            timeZone: CONTACT.timeZone
+        })
+        const numericDate = new Intl.DateTimeFormat('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: CONTACT.timeZone
+        })
+        const read = (): ManilaClock => {
+            const now = new Date()
+            const parts = clock.formatToParts(now)
+            const hour = parts.find(part => part.type === 'hour')?.value ?? '00'
+            const minute = parts.find(part => part.type === 'minute')?.value ?? '00'
+            const offset = parts.find(part => part.type === 'timeZoneName')?.value ?? ''
+            const dateParts = numericDate.formatToParts(now)
+            const day = dateParts.find(part => part.type === 'day')?.value ?? '01'
+            const month = dateParts.find(part => part.type === 'month')?.value ?? '01'
+            const year = dateParts.find(part => part.type === 'year')?.value ?? '2026'
 
-        return () => window.clearInterval(timer)
+            return {
+                date: displayDate.format(now),
+                label: `${hour}:${minute}`,
+                offset,
+                dateTime: `${year}-${month}-${day}T${hour}:${minute}`,
+                year
+            }
+        }
+        const update = () => setTime(read())
+        const now = new Date()
+        const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds()
+        let timer: number | undefined
+
+        update()
+        const align = window.setTimeout(() => {
+            update()
+            timer = window.setInterval(update, 60_000)
+        }, msToNextMinute)
+        const onVisibility = () => {
+            if (!document.hidden) update()
+        }
+        document.addEventListener('visibilitychange', onVisibility)
+
+        return () => {
+            window.clearTimeout(align)
+            if (timer) window.clearInterval(timer)
+            document.removeEventListener('visibilitychange', onVisibility)
+        }
     }, [])
 
     return time
@@ -71,8 +130,9 @@ export const Finale: FC = (): ReactNode => {
 
         const setOrb = (g: number) => {
             const vh = window.innerHeight
-            orb.style.setProperty('--orb-y', `${(orbPath(g) * vh).toFixed(1)}px`)
-            orb.style.setProperty('--orb-r', `${((R_SMALL + (R_LARGE - R_SMALL) * Math.pow(g, 1.6)) * vh).toFixed(1)}px`)
+            const y = orbPath(g) * vh
+            const scale = (R_SMALL + (R_LARGE - R_SMALL) * Math.pow(g, 1.6)) / R_LARGE
+            orb.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`
             orb.classList.toggle('is-front', g >= APEX_AT)
             orb.classList.toggle('is-cta', g > 0.86)
         }
@@ -124,8 +184,8 @@ export const Finale: FC = (): ReactNode => {
                 ground.style.clipPath = `circle(${radius.toFixed(1)}px at 50% ${radius.toFixed(1)}px)`
             }
             ring.style.setProperty('--ring-in', e.toFixed(3))
-            if (e > 0.999 && rect.top <= 1) launch()
-            else if (e < 0.99) recall()
+            if (e > 0.85) launch()
+            else if (e < 0.75) recall()
         }
 
         const job: FrameJob = {
@@ -164,25 +224,27 @@ export const Finale: FC = (): ReactNode => {
 
     return (
         <section ref={wrapRef} id='contact' data-tone='bone' className='finale relative'>
-            <div className='finale-stage sticky top-0 h-[100svh] overflow-hidden'>
-                <div ref={groundRef} aria-hidden className='absolute inset-0 bg-bone' />
-                <div ref={ringRef} aria-hidden className='finale-ring' />
-                <a
-                    ref={orbRef}
-                    href={`mailto:${CONTACT.email}?subject=Let%E2%80%99s%20build%20something`}
-                    data-gravity-well
-                    data-cursor-invert
-                    className='finale-orb'
-                    aria-label={`Email Bennett at ${CONTACT.email}`}
-                >
-                    <span aria-hidden>Let’s<br /><em>talk!</em></span>
-                </a>
-                <p className='absolute inset-x-0 top-[14svh] z-[2] px-5 text-center text-lead text-muted-bone'>
-                    Internships, freelance builds, or an open-source bug you want fixed.
-                </p>
-            </div>
+            <div className='relative'>
+                <div className='finale-stage sticky top-0 h-[100svh] overflow-hidden'>
+                    <div ref={groundRef} aria-hidden className='absolute inset-0 bg-bone' />
+                    <div ref={ringRef} aria-hidden className='finale-ring' />
+                    <a
+                        ref={orbRef}
+                        href={`mailto:${CONTACT.email}?subject=Let%E2%80%99s%20build%20something`}
+                        data-gravity-well
+                        data-cursor-invert
+                        className='finale-orb'
+                        aria-label={`Email Bennett at ${CONTACT.email}`}
+                    >
+                        <span aria-hidden>Let’s<br /><em>talk!</em></span>
+                    </a>
+                    <p className='absolute inset-x-0 top-[14svh] z-[2] px-5 text-center text-lead text-muted-bone'>
+                        Internships, freelance builds, or an open-source bug you want fixed.
+                    </p>
+                </div>
 
-            <div aria-hidden className='h-[45svh]' />
+                <div aria-hidden className='h-[45svh]' />
+            </div>
 
             <div className='relative bg-bone px-5 pb-28 pt-10 text-ink sm:px-10'>
                 <div className='flex flex-col items-center gap-6 text-center'>
@@ -195,7 +257,7 @@ export const Finale: FC = (): ReactNode => {
                     <button
                         type='button'
                         onClick={copyEmail}
-                        className='inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-small font-semibold text-bone transition-colors hover:bg-ink-2'
+                        className='inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-small font-semibold text-bone transition-[background-color,scale] duration-[160ms] ease-[var(--ease-out)] hover:bg-ink-2 active:scale-[0.97]'
                     >
                         {copy === 'done' ? <Check className='size-4' aria-hidden /> : <Copy className='size-4' aria-hidden />}
                         {copy === 'done' ? 'Copied' : copy === 'failed' ? 'Copy blocked, select the address' : 'Copy email'}
@@ -223,7 +285,15 @@ export const Finale: FC = (): ReactNode => {
 
                 <p className='mt-12 text-center text-small text-muted-bone tabular'>
                     {CONTACT.location}
-                    {time && <> · {time} GMT+8</>}
+                    {time && (
+                        <>
+                            {' · '}
+                            <time dateTime={time.dateTime}>
+                                {time.date} · {time.label}
+                                {time.offset && <> {time.offset}</>}
+                            </time>
+                        </>
+                    )}
                 </p>
             </div>
         </section>
@@ -233,6 +303,7 @@ export const Finale: FC = (): ReactNode => {
 // Present at the very top and the very end; out of the way everywhere between.
 export const SiteFooter: FC = (): ReactNode => {
     const [state, setState] = useState<'top' | 'end' | 'hidden'>('top')
+    const time = useManilaTime()
 
     useEffect(() => {
         let next: 'top' | 'end' | 'hidden' = 'top'
@@ -259,15 +330,15 @@ export const SiteFooter: FC = (): ReactNode => {
         <footer className={cn('site-footer', state !== 'hidden' && 'is-visible', state === 'end' && 'is-end')}>
             <div aria-hidden className='site-footer-tick'><i /></div>
             <div className='site-footer-row'>
-                <p>© 2026 <span className='font-semibold'>Bennett Payoyo</span><span className='hidden sm:inline'> · built in Metro Manila</span></p>
+                <p>© {time?.year ?? '2026'} <span className='font-semibold'>Bennett Payoyo</span></p>
                 <a href='#top' className='inline-flex items-center gap-1.5'>
                     {state === 'end' ? <>Back to top <ArrowUp className='size-4' aria-hidden /></> : 'Scroll'}
                 </a>
                 <div className='flex items-center justify-end gap-4'>
-                    <a href={CONTACT.github} target='_blank' rel='noreferrer' aria-label='GitHub profile'>
+                    <a href={CONTACT.github} target='_blank' rel='noreferrer' aria-label='GitHub profile' className='grid size-10 place-items-center rounded-full transition-colors hover:bg-bone/10'>
                         <Github className='size-5' aria-hidden />
                     </a>
-                    <a href={CONTACT.linkedin} target='_blank' rel='noreferrer' aria-label='LinkedIn profile'>
+                    <a href={CONTACT.linkedin} target='_blank' rel='noreferrer' aria-label='LinkedIn profile' className='grid size-10 place-items-center rounded-full transition-colors hover:bg-bone/10'>
                         <Linkedin className='size-5' aria-hidden />
                     </a>
                 </div>
