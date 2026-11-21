@@ -61,17 +61,21 @@ export interface ProjectItem extends PortfolioItemBase {
     result?: string
 }
 
+export interface OpenSourcePullRequest {
+    number: number
+    title: string
+    url: string
+    mergedAt: string
+    points?: string[]
+}
+
 export interface OpenSourceContribution {
     id: string
     project: string
     repo: string
     stars: number
-    number: number
-    title: string
-    mergedAt: string
-    url: string
     area: string
-    points: string[]
+    prs: OpenSourcePullRequest[]
 }
 
 // One frame in the project orbit: a real screenshot tied to a project or merged PR.
@@ -81,6 +85,7 @@ export interface OrbitCard {
     width: number
     height: number
     ref: string
+    prNumber?: number
     label: string
 }
 

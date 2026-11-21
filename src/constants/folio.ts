@@ -23,71 +23,221 @@ export const CONTACT = {
     timeZone: 'Asia/Manila'
 } as const
 
-// Source: merged pull requests listed on the resume, verified against the GitHub API.
+// Source: merged pull requests on GitHub, verified against the GitHub API.
 export const openSource: OpenSourceContribution[] = [
     {
         id: 'tabby',
         project: 'Tabby',
         repo: 'Eugeny/tabby',
-        stars: 75,
-        number: 11651,
-        title: 'Flash taskbar/dock icon when the terminal bell rings',
-        mergedAt: '2026-09-11',
-        url: 'https://github.com/Eugeny/tabby/pull/11651',
+        stars: 75528,
         area: 'Electron · desktop UX',
-        points: [
-            'Taskbar flashing on Windows and Linux, dock bounce on macOS, via Electron flashFrame when the bell rings in an unfocused window.',
-            'Shipped as an opt-in terminal.bellFlashFrame setting, off by default and hidden on the web build.'
+        prs: [
+            {
+                number: 11651,
+                title: 'Flash taskbar/dock icon when the terminal bell rings',
+                url: 'https://github.com/Eugeny/tabby/pull/11651',
+                mergedAt: '2026-09-11',
+                points: [
+                    'Taskbar flashing on Windows and Linux, dock bounce on macOS, via Electron flashFrame when the bell rings in an unfocused window.',
+                    'Shipped as an opt-in terminal.bellFlashFrame setting, off by default and hidden on the web build.'
+                ]
+            }
         ]
     },
     {
         id: 'prettier',
         project: 'Prettier',
         repo: 'prettier/prettier',
-        stars: 52,
-        number: 20015,
-        title: 'Angular: support @boundary / @error error boundaries',
-        mergedAt: '2026-09-15',
-        url: 'https://github.com/prettier/prettier/pull/20015',
+        stars: 52441,
         area: 'Parsers · formatting',
-        points: [
-            'Parsing and printing for Angular 22.2 error-boundary blocks, reusing the pairing rules of @if/@else and @defer.',
-            'Upgraded angular-html-parser and iterated with a maintainer through review, adopting Angular’s official examples as fixtures.'
+        prs: [
+            {
+                number: 20015,
+                title: 'Angular: support @boundary / @error error boundaries',
+                url: 'https://github.com/prettier/prettier/pull/20015',
+                mergedAt: '2026-09-15',
+                points: [
+                    'Parsing and printing for Angular 22.2 error-boundary blocks, reusing the pairing rules of @if/@else and @defer.',
+                    'Upgraded angular-html-parser and iterated with a maintainer through review, adopting Angular’s official examples as fixtures.'
+                ]
+            }
+        ]
+    },
+    {
+        id: 'leaflet',
+        project: 'Leaflet',
+        repo: 'Leaflet/Leaflet',
+        stars: 45964,
+        area: 'Pointer events · inertia',
+        prs: [
+            { number: 10386, title: 'Fix map jumping when dragging after pointerdown during inertia', url: 'https://github.com/Leaflet/Leaflet/pull/10386', mergedAt: '2026-10-21' }
+        ]
+    },
+    {
+        id: 'swiper',
+        project: 'Swiper',
+        repo: 'nolimits4web/swiper',
+        stars: 41907,
+        area: 'Core · DOM events',
+        prs: [
+            { number: 8232, title: 'Keep elementTransitionEnd until the element’s own event', url: 'https://github.com/nolimits4web/swiper/pull/8232', mergedAt: '2026-09-28' }
+        ]
+    },
+    {
+        id: 'tiptap',
+        project: 'Tiptap',
+        repo: 'ueberdosis/tiptap',
+        stars: 39104,
+        area: 'Editor · tables · Markdown',
+        prs: [
+            { number: 8433, title: 'Escape allowedPrefixes in suggestion prefix regex', url: 'https://github.com/ueberdosis/tiptap/pull/8433', mergedAt: '2026-10-08' },
+            { number: 8427, title: 'Join heading markdown children without commas', url: 'https://github.com/ueberdosis/tiptap/pull/8427', mergedAt: '2026-10-08' },
+            { number: 8319, title: 'Stop leaking U+001F into table markdown', url: 'https://github.com/ueberdosis/tiptap/pull/8319', mergedAt: '2026-09-22' },
+            { number: 8322, title: 'Keep table CellSelection when opening the context menu', url: 'https://github.com/ueberdosis/tiptap/pull/8322', mergedAt: '2026-09-21' }
+        ]
+    },
+    {
+        id: 'marked',
+        project: 'Marked',
+        repo: 'markedjs/marked',
+        stars: 37321,
+        area: 'Lexer · Markdown parsing',
+        prs: [
+            { number: 4101, title: 'Keep text after empty nested blockquote', url: 'https://github.com/markedjs/marked/pull/4101', mergedAt: '2026-09-22' }
         ]
     },
     {
         id: 'pnpm',
         project: 'pnpm',
         repo: 'pnpm/pnpm',
-        stars: 37,
-        number: 14878,
-        title: 'Use printf instead of echo for POSIX path normalization',
-        mergedAt: '2026-09-15',
-        url: 'https://github.com/pnpm/pnpm/pull/14878',
+        stars: 37148,
         area: 'Rust · shell · package managers',
-        points: [
-            'POSIX bin shims were corrupting Windows-style paths: echo turned \\n and \\t inside C:\\node_modules\\.bin into control characters.',
-            'Switched the Rust cmd-shim header to printf, added regression tests, and made warm reinstalls rewrite stale shims.'
+        prs: [
+            {
+                number: 14878,
+                title: 'Use printf instead of echo for POSIX path normalization',
+                url: 'https://github.com/pnpm/pnpm/pull/14878',
+                mergedAt: '2026-09-15',
+                points: [
+                    'POSIX bin shims were corrupting Windows-style paths: echo turned \\n and \\t inside C:\\node_modules\\.bin into control characters.',
+                    'Switched the Rust cmd-shim header to printf, added regression tests, and made warm reinstalls rewrite stale shims.'
+                ]
+            }
+        ]
+    },
+    {
+        id: 'solid',
+        project: 'Solid',
+        repo: 'solidjs/solid',
+        stars: 36895,
+        area: 'Solid 2.0 · web renderer',
+        prs: [
+            { number: 3573, title: 'Remove falsy sole-child primitives when replacing content', url: 'https://github.com/solidjs/solid/pull/3573', mergedAt: '2026-09-22' }
+        ]
+    },
+    {
+        id: 'hono',
+        project: 'Hono',
+        repo: 'honojs/hono',
+        stars: 33007,
+        area: 'Routing · TypeScript',
+        prs: [
+            { number: 5423, title: 'Keep first value for duplicate path params in TrieRouter', url: 'https://github.com/honojs/hono/pull/5423', mergedAt: '2026-10-16' }
+        ]
+    },
+    {
+        id: 'actual',
+        project: 'Actual',
+        repo: 'actualbudget/actual',
+        stars: 30383,
+        area: 'Keyboard focus · TypeScript',
+        prs: [
+            { number: 8894, title: 'Keep focus on parent payment when enabling split', url: 'https://github.com/actualbudget/actual/pull/8894', mergedAt: '2026-10-05' }
+        ]
+    },
+    {
+        id: 'immer',
+        project: 'Immer',
+        repo: 'immerjs/immer',
+        stars: 29004,
+        area: 'Regression tests · JavaScript',
+        prs: [
+            { number: 1309, title: 'Cover circular symbol references in produce', url: 'https://github.com/immerjs/immer/pull/1309', mergedAt: '2026-10-02' }
+        ]
+    },
+    {
+        id: 'plotly',
+        project: 'Plotly.js',
+        repo: 'plotly/plotly.js',
+        stars: 18386,
+        area: 'Charts · TypeScript',
+        prs: [
+            { number: 8069, title: 'Honor discrete marker.color arrays in quiver traces', url: 'https://github.com/plotly/plotly.js/pull/8069', mergedAt: '2026-10-19' },
+            { number: 8080, title: 'Make downloadImage opts optional in TypeScript types', url: 'https://github.com/plotly/plotly.js/pull/8080', mergedAt: '2026-09-27' }
+        ]
+    },
+    {
+        id: 'shiki',
+        project: 'Shiki',
+        repo: 'shikijs/shiki',
+        stars: 13943,
+        area: 'Syntax highlighting · TypeScript',
+        prs: [
+            { number: 1333, title: 'Apply injections loaded after their target grammar', url: 'https://github.com/shikijs/shiki/pull/1333', mergedAt: '2026-11-02' },
+            { number: 1316, title: 'Avoid crash when Twoslash @errors nodes land past EOF', url: 'https://github.com/shikijs/shiki/pull/1316', mergedAt: '2026-10-01' }
         ]
     },
     {
         id: 'undici',
         project: 'Undici',
         repo: 'nodejs/undici',
-        stars: 8,
-        number: 5819,
-        title: 'Do not report aborted on successful cache hits',
-        mergedAt: '2026-09-15',
-        url: 'https://github.com/nodejs/undici/pull/5819',
+        stars: 7749,
         area: 'Node.js · HTTP caching',
-        points: [
-            'The cache interceptor reported aborted=true on successful hits because the flag aliased stream.destroyed.',
-            'Tracked cancellation with an explicit flag set only in abort(), with regression tests for both paths.'
+        prs: [
+            { number: 5927, title: 'Add fetch-level regression test settling h2 internal stream errors', url: 'https://github.com/nodejs/undici/pull/5927', mergedAt: '2026-10-08' },
+            {
+                number: 5819,
+                title: 'Do not report aborted on successful cache hits',
+                url: 'https://github.com/nodejs/undici/pull/5819',
+                mergedAt: '2026-09-15',
+                points: [
+                    'The cache interceptor reported aborted=true on successful hits because the flag aliased stream.destroyed.',
+                    'Tracked cancellation with an explicit flag set only in abort(), with regression tests for both paths.'
+                ]
+            }
+        ]
+    },
+    {
+        id: 'turbo',
+        project: 'Turbo',
+        repo: 'hotwired/turbo',
+        stars: 7404,
+        area: 'Navigation · Forms · JavaScript',
+        prs: [
+            { number: 1606, title: 'Don’t abort a form submission when a page refresh arrives', url: 'https://github.com/hotwired/turbo/pull/1606', mergedAt: '2026-11-18' },
+            { number: 1605, title: 'Resolve relative URLs after a redirected visit', url: 'https://github.com/hotwired/turbo/pull/1605', mergedAt: '2026-11-17' },
+            { number: 1571, title: 'Fix morph focus crash when saved id is no longer an input', url: 'https://github.com/hotwired/turbo/pull/1571', mergedAt: '2026-11-12' },
+            { number: 1578, title: 'Ignore SecurityError when restoring scrollRestoration on pagehide', url: 'https://github.com/hotwired/turbo/pull/1578', mergedAt: '2026-11-11' },
+            { number: 1577, title: 'Fix prefetch cache misses for non-URLSearchParams query strings', url: 'https://github.com/hotwired/turbo/pull/1577', mergedAt: '2026-11-11' },
+            { number: 1574, title: 'Fix stream focus preservation overriding a newly focused input', url: 'https://github.com/hotwired/turbo/pull/1574', mergedAt: '2026-11-11' }
+        ]
+    },
+    {
+        id: 'rdf-construct',
+        project: 'rdf-construct',
+        repo: 'aigora-de/rdf-construct',
+        stars: 7,
+        area: 'Python · RDF tooling',
+        prs: [
+            { number: 167, title: 'Count distinct class URIs in puml2rdf conversion summary', url: 'https://github.com/aigora-de/rdf-construct/pull/167', mergedAt: '2026-10-12' }
         ]
     }
 ]
 
-export const OPEN_SOURCE_STARS = openSource.reduce((total, pr) => total + pr.stars, 0)
+export const OPEN_SOURCE_REPO_COUNT = openSource.length
+export const OPEN_SOURCE_PR_COUNT = openSource.reduce((total, repo) => total + repo.prs.length, 0)
+// Thousands, rounded: the headline appends "k".
+export const OPEN_SOURCE_STARS = Math.round(openSource.reduce((total, repo) => total + repo.stars, 0) / 1000)
 
 export const projects = validatePortfolioItems([
     {
@@ -198,26 +348,26 @@ export const projects = validatePortfolioItems([
 export const ORBIT_CARDS: OrbitCard[] = [
     { id: 'bantayog-d1', src: '/orbit/bantayog-d1.webp', width: 1100, height: 688, ref: 'bantayog', label: 'BANTAYOG · LGU portal' },
     { id: 'bikol-word', src: '/orbit/bikol-word.webp', width: 1100, height: 688, ref: 'bikol-dictionary', label: 'Bikol Dictionary · word entry' },
-    { id: 'pr-prettier', src: '/orbit/pr-prettier.webp', width: 1100, height: 705, ref: 'prettier', label: 'Prettier #20015 · merged' },
+    { id: 'pr-prettier', src: '/orbit/pr-prettier.webp', width: 1100, height: 705, ref: 'prettier', prNumber: 20015, label: 'Prettier #20015 · merged' },
     { id: 'tanglaw-d1', src: '/orbit/tanglaw-d1.webp', width: 1100, height: 688, ref: 'tanglaw', label: 'TANGLAW · home' },
     { id: 'clabs-dash', src: '/orbit/clabs-dash.webp', width: 1100, height: 688, ref: 'c-labs', label: 'C-LABS · topic picker' },
     { id: 'scholaraid-d1', src: '/orbit/scholaraid-d1.webp', width: 1100, height: 688, ref: 'scholaraid', label: 'ScholarAid · home' },
-    { id: 'pr-pnpm-files', src: '/orbit/pr-pnpm-files.webp', width: 1100, height: 705, ref: 'pnpm', label: 'pnpm #14878 · the diff' },
+    { id: 'pr-pnpm-files', src: '/orbit/pr-pnpm-files.webp', width: 1100, height: 705, ref: 'pnpm', prNumber: 14878, label: 'pnpm #14878 · the diff' },
     { id: 'bikol-m1', src: '/orbit/bikol-m1.webp', width: 390, height: 844, ref: 'bikol-dictionary', label: 'Bikol Dictionary · mobile' },
-    { id: 'pr-tabby', src: '/orbit/pr-tabby.webp', width: 1100, height: 705, ref: 'tabby', label: 'Tabby #11651 · merged' },
+    { id: 'pr-tabby', src: '/orbit/pr-tabby.webp', width: 1100, height: 705, ref: 'tabby', prNumber: 11651, label: 'Tabby #11651 · merged' },
     { id: 'tanglaw-about', src: '/orbit/tanglaw-about.webp', width: 1100, height: 688, ref: 'tanglaw', label: 'TANGLAW · about' },
     { id: 'scholaraid-d2', src: '/orbit/scholaraid-d2.webp', width: 1100, height: 688, ref: 'scholaraid', label: 'ScholarAid · matcher' },
     { id: 'bantayog-m1', src: '/orbit/bantayog-m1.webp', width: 390, height: 844, ref: 'bantayog', label: 'BANTAYOG · mobile' },
-    { id: 'pr-undici', src: '/orbit/pr-undici.webp', width: 1100, height: 705, ref: 'undici', label: 'Undici #5819 · merged' },
+    { id: 'pr-undici', src: '/orbit/pr-undici.webp', width: 1100, height: 705, ref: 'undici', prNumber: 5819, label: 'Undici #5819 · merged' },
     { id: 'bikol-flash', src: '/orbit/bikol-flash.webp', width: 1100, height: 688, ref: 'bikol-dictionary', label: 'Bikol Dictionary · flashcards' },
     { id: 'clabs-d1', src: '/orbit/clabs-d1.webp', width: 1100, height: 688, ref: 'c-labs', label: 'C-LABS · home' },
-    { id: 'pr-prettier-files', src: '/orbit/pr-prettier-files.webp', width: 1100, height: 705, ref: 'prettier', label: 'Prettier #20015 · the diff' },
+    { id: 'pr-prettier-files', src: '/orbit/pr-prettier-files.webp', width: 1100, height: 705, ref: 'prettier', prNumber: 20015, label: 'Prettier #20015 · the diff' },
     { id: 'scholaraid-m1', src: '/orbit/scholaraid-m1.webp', width: 390, height: 844, ref: 'scholaraid', label: 'ScholarAid · mobile' },
     { id: 'bikol-d1', src: '/orbit/bikol-d1.webp', width: 1100, height: 688, ref: 'bikol-dictionary', label: 'Bikol Dictionary · home' },
-    { id: 'pr-pnpm', src: '/orbit/pr-pnpm.webp', width: 1100, height: 705, ref: 'pnpm', label: 'pnpm #14878 · merged' },
+    { id: 'pr-pnpm', src: '/orbit/pr-pnpm.webp', width: 1100, height: 705, ref: 'pnpm', prNumber: 14878, label: 'pnpm #14878 · merged' },
     { id: 'tanglaw-m1', src: '/orbit/tanglaw-m1.webp', width: 390, height: 844, ref: 'tanglaw', label: 'TANGLAW · mobile' },
     { id: 'scholaraid-d3', src: '/orbit/scholaraid-d3.webp', width: 1100, height: 688, ref: 'scholaraid', label: 'ScholarAid · eligibility check' },
-    { id: 'pr-tabby-files', src: '/orbit/pr-tabby-files.webp', width: 1100, height: 705, ref: 'tabby', label: 'Tabby #11651 · the diff' },
+    { id: 'pr-tabby-files', src: '/orbit/pr-tabby-files.webp', width: 1100, height: 705, ref: 'tabby', prNumber: 11651, label: 'Tabby #11651 · the diff' },
     { id: 'clabs-m1', src: '/orbit/clabs-m1.webp', width: 390, height: 844, ref: 'c-labs', label: 'C-LABS · mobile' },
     { id: 'bikol-browse', src: '/orbit/bikol-browse.webp', width: 1100, height: 688, ref: 'bikol-dictionary', label: 'Bikol Dictionary · browse' }
 ]
