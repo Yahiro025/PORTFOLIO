@@ -1,24 +1,21 @@
 import type { FC, ReactNode } from 'react'
 
-import Head from 'next/head'
 import Link from 'next/link'
+
+import { Seo } from '@/components/generals/seo'
 
 const ServerError: FC = (): ReactNode => {
     return (
-        <main className='flex min-h-screen flex-col items-center justify-center gap-4'>
-            <Head>
-                <title>
-                    500 - Something went wrong!
-                </title>
-            </Head>
+        <main className='tone-ink flex min-h-svh flex-col items-center justify-center gap-6 px-5 text-center'>
+            <Seo title='500 - Server error' />
 
-            <h1 className='text-4xl font-bold'>
+            <h1 className='display text-display font-bold'>
                 Something went wrong.
             </h1>
 
             <Link
                 href='/'
-                className='text-sm underline underline-offset-4 hover:text-primary'
+                className='inline-flex items-center rounded-full bg-ember px-6 py-3.5 text-small font-semibold text-ink transition-[background-color,scale] duration-[160ms] ease-[var(--ease-out)] hover:bg-ember-hot active:scale-[0.97]'
             >
                 Go back home
             </Link>
