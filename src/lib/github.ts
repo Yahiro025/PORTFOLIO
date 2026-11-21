@@ -185,6 +185,11 @@ const normalizeGitHubSnapshot = (
 let cachedSnapshot: GitHubSnapshot | null = null
 let cachedAt = 0
 const CACHE_TTL_MS = 10 * 60 * 1000
+const FETCH_TIMEOUT_MS = 5000
+
+// Real network calls get a deadline so a hung socket cannot stall the build or ISR. Injected fetchers keep their exact call shape.
+const withTimeout = (init: RequestInit, enabled: boolean): RequestInit =>
+    enabled ? { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) } : init
 
 export const loadGitHubSnapshot = async (
     token = process.env.GITHUB_TOKEN,
@@ -212,7 +217,7 @@ export const loadGitHubSnapshot = async (
             'https://api.github.com/users/Yahiro025/repos?per_page=100&sort=pushed',
             'https://api.github.com/users/Yahiro025/events/public?per_page=30'
         ]
-        const responses = await Promise.all(urls.map(url => fetchImpl(url, { headers })))
+        const responses = await Promise.all(urls.map(url => fetchImpl(url, withTimeout({ headers }, isDefaultFetch))))
 
         if (responses.some(response => !response.ok)) return null
 
@@ -220,11 +225,11 @@ export const loadGitHubSnapshot = async (
 
         let contributionsData: { totalContributions: number; contributions: GitHubContributionDay[] } | undefined
         try {
-            const contribRes = await fetchImpl('https://github.com/users/Yahiro025/contributions', {
+            const contribRes = await fetchImpl('https://github.com/users/Yahiro025/contributions', withTimeout({
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
-            })
+            }, isDefaultFetch))
             if (contribRes.ok) {
                 const html = await contribRes.text()
                 contributionsData = parseGitHubContributions(html)
