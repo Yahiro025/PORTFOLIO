@@ -4,7 +4,10 @@
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "next build",
-        "start": "next start"
+        "start": "next start",
+        "test": "node --test --test-concurrency=1 src/lib",
+        "typecheck": "tsc --noEmit",
+        "prepare": "husky"
     },
     "dependencies": {
         "@base-ui/react": "^1.7.0",
@@ -32,6 +35,9 @@
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.6.1",
+        "prettier": "^3.10.1",
         "tailwindcss": "^4",
         "typescript": "^5"
     }
