@@ -47,12 +47,29 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
         const canvas = canvasRef.current
         if (!wrap || !canvas || !finePointer() || prefersReducedMotion()) return
 
+        // A lost WebGL canvas composites as solid white, so the fallback swap never fades.
+        const hideCanvas = () => {
+            canvas.style.transition = 'none'
+            canvas.style.opacity = '0'
+            canvas.style.visibility = 'hidden'
+            if (imageRef.current) imageRef.current.style.visibility = ''
+        }
+        const showCanvas = () => {
+            canvas.style.transition = ''
+            canvas.style.visibility = 'visible'
+            canvas.style.opacity = '1'
+            if (imageRef.current) imageRef.current.style.visibility = 'hidden'
+        }
+
+        hideCanvas()
+
         const gl = canvas.getContext('webgl', {
             alpha: true,
             antialias: false,
             depth: false,
             stencil: false,
             premultipliedAlpha: true,
+            preserveDrawingBuffer: true,
             powerPreference: 'low-power'
         })
         if (!gl) return
@@ -65,23 +82,33 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
 
             return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null
         }
-        const vertex = compile(gl.VERTEX_SHADER, VERTEX)
-        const fragment = compile(gl.FRAGMENT_SHADER, FRAGMENT)
-        const program = gl.createProgram()
-        if (!vertex || !fragment || !program) return
-        gl.attachShader(program, vertex)
-        gl.attachShader(program, fragment)
-        gl.linkProgram(program)
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return
-        gl.useProgram(program)
 
-        const buffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
-        const aPos = gl.getAttribLocation(program, 'aPos')
-        gl.enableVertexAttribArray(aPos)
-        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
-        const uShift = gl.getUniformLocation(program, 'uShift')
+        let program: WebGLProgram | null = null
+        let uShift: WebGLUniformLocation | null = null
+
+        // Everything below is rebuilt after a context restore, so it stays in one place.
+        const initGl = () => {
+            const vertex = compile(gl.VERTEX_SHADER, VERTEX)
+            const fragment = compile(gl.FRAGMENT_SHADER, FRAGMENT)
+            const next = gl.createProgram()
+            if (!vertex || !fragment || !next) return false
+            gl.attachShader(next, vertex)
+            gl.attachShader(next, fragment)
+            gl.linkProgram(next)
+            if (!gl.getProgramParameter(next, gl.LINK_STATUS)) return false
+            gl.useProgram(next)
+
+            const buffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
+            const aPos = gl.getAttribLocation(next, 'aPos')
+            gl.enableVertexAttribArray(aPos)
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+
+            program = next
+            uShift = gl.getUniformLocation(next, 'uShift')
+            return true
+        }
 
         const texture = (unit: number, image: HTMLImageElement, premultiply: boolean) => {
             const tex = gl.createTexture()
@@ -95,6 +122,22 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
         }
 
+        let cachedPhoto: HTMLImageElement | null = null
+        let cachedDepth: HTMLImageElement | null = null
+
+        const uploadTextures = (photo: HTMLImageElement, depth: HTMLImageElement) => {
+            if (!program) return false
+            texture(0, photo, true)
+            texture(1, depth, false)
+            gl.uniform1i(gl.getUniformLocation(program, 'uPhoto'), 0)
+            gl.uniform1i(gl.getUniformLocation(program, 'uDepth'), 1)
+            cachedPhoto = photo
+            cachedDepth = depth
+            return true
+        }
+
+        if (!initGl()) return
+
         let disposed = false
         let frame = 0
         let last = 0
@@ -103,6 +146,7 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
         let shiftX = 0
         let shiftY = 0
         let ready = false
+        let inView = true
 
         const resize = () => {
             const ratio = Math.min(window.devicePixelRatio || 1, 2)
@@ -141,7 +185,7 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
         }
 
         const onMove = (event: PointerEvent) => {
-            if (!ready) return
+            if (!ready || !inView) return
             targetX = -((event.clientX / window.innerWidth) - 0.5) * 2 * STRENGTH
             targetY = -((event.clientY / window.innerHeight) - 0.5) * 2 * STRENGTH
             if (!frame) frame = requestAnimationFrame(tick)
@@ -152,15 +196,12 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
         let idle = 0
         const start = () => Promise.all([loadImage(PHOTO_SRC), loadImage(DEPTH_SRC)]).then(([photo, depth]) => {
             if (disposed) return
-            texture(0, photo, true)
-            texture(1, depth, false)
-            gl.uniform1i(gl.getUniformLocation(program, 'uPhoto'), 0)
-            gl.uniform1i(gl.getUniformLocation(program, 'uDepth'), 1)
+            if (!uploadTextures(photo, depth)) return
             resize()
             draw()
+            if (gl.isContextLost() || gl.getError() !== gl.NO_ERROR) return
             ready = true
-            canvas.style.opacity = '1'
-            if (imageRef.current) imageRef.current.style.visibility = 'hidden'
+            showCanvas()
         }).catch(() => undefined)
         const whenIdle = () => {
             idle = typeof window.requestIdleCallback === 'function'
@@ -176,15 +217,56 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
             draw()
         })
         observer.observe(wrap)
+
+        // Off-screen moves would otherwise redraw the whole canvas on every pointer event.
+        const view = new IntersectionObserver(([entry]) => {
+            inView = entry.isIntersecting
+            if (!inView && frame) {
+                cancelAnimationFrame(frame)
+                frame = 0
+                last = 0
+            } else if (inView && ready) {
+                draw()
+            }
+        })
+        view.observe(wrap)
         window.addEventListener('pointermove', onMove, { passive: true })
+
+        // Chrome can drop the drawing buffer at any time: fall back to the plain image,
+        // then rebuild the scene from the cached pixels once the context comes back.
+        const onLost = (event: Event) => {
+            event.preventDefault()
+            ready = false
+            if (frame) {
+                cancelAnimationFrame(frame)
+                frame = 0
+                last = 0
+            }
+            hideCanvas()
+        }
+        const onRestored = () => {
+            if (disposed || !cachedPhoto || !cachedDepth) return
+            if (!initGl() || !uploadTextures(cachedPhoto, cachedDepth)) return
+            resize()
+            draw()
+            if (gl.isContextLost() || gl.getError() !== gl.NO_ERROR) return
+            ready = true
+            showCanvas()
+        }
+        canvas.addEventListener('webglcontextlost', onLost)
+        canvas.addEventListener('webglcontextrestored', onRestored)
 
         return () => {
             disposed = true
+            hideCanvas()
             window.removeEventListener('load', whenIdle)
             if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle)
             globalThis.clearTimeout(idle)
             cancelAnimationFrame(frame)
+            canvas.removeEventListener('webglcontextlost', onLost)
+            canvas.removeEventListener('webglcontextrestored', onRestored)
             observer.disconnect()
+            view.disconnect()
             window.removeEventListener('pointermove', onMove)
         }
     }, [])
