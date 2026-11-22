@@ -1,0 +1,641 @@
+diff --git a/.github/workflows/github-snapshot-monitor.yml b/.github/workflows/github-snapshot-monitor.yml
+new file mode 100644
+index 0000000..698ff1a
+--- /dev/null
++++ b/.github/workflows/github-snapshot-monitor.yml
+@@ -0,0 +1,103 @@
++# Checks that the homepage GitHub snapshot is fresh. The Vercel cron in vercel.json is the only
++# routine trigger; this job verifies it and repairs a stale page.
++#
++# Scheduled run: fresh -> pass. Stale -> refresh -> the job FAILS either way, so GitHub emails the
++# owner that the Vercel cron did not do its job (the error says whether the repair worked).
++# Manual run with force_refresh: refresh -> pass only if fetchedAt became strictly newer.
++name: GitHub snapshot monitor
++
++on:
++    schedule:
++        # 19:17 UTC: after the Vercel cron window (17:00-17:59 UTC), off the busy top of the hour.
++        - cron: '17 19 * * *'
++    workflow_dispatch:
++        inputs:
++            force_refresh:
++                description: 'Call /api/refresh-github even if the snapshot looks fresh'
++                type: boolean
++                default: false
++
++permissions: {}
++
++concurrency:
++    group: github-snapshot-monitor
++    cancel-in-progress: false
++
++jobs:
++    check:
++        runs-on: ubuntu-latest
++        timeout-minutes: 15
++        env:
++            SITE_URL: https://bennettpayoyo.vercel.app
++            MAX_AGE_SECONDS: '21600'
++            CRON_SECRET: ${{ secrets.CRON_SECRET }}
++            # Empty on scheduled runs; 'true' only when a manual run ticks the box.
++            FORCE_REFRESH: ${{ inputs.force_refresh }}
++        steps:
++            - name: Check freshness, repair if stale
++              shell: bash
++              run: |
++                  set -euo pipefail
++
++                  # Prints the homepage fetchedAt (ISO 8601), or nothing when the page or the field is missing.
++                  read_fetched_at() {
++                      curl -fsS --max-time 30 --retry 3 --retry-all-errors --retry-delay 10 "$SITE_URL/" \
++                          | grep -o '"fetchedAt":"[^"]*"' | head -n 1 | cut -d '"' -f 4 || true
++                  }
++
++                  age_seconds() {
++                      echo $(( $(date -u +%s) - $(date -u -d "$1" +%s) ))
++                  }
++
++                  before=$(read_fetched_at)
++                  if [ -n "$before" ]; then
++                      echo "fetchedAt=$before age=$(age_seconds "$before")s limit=${MAX_AGE_SECONDS}s"
++                  else
++                      echo "::warning::Could not read fetchedAt from $SITE_URL/"
++                  fi
++
++                  if [ "${FORCE_REFRESH:-false}" != "true" ] && [ -n "$before" ] \
++                      && [ "$(age_seconds "$before")" -le "$MAX_AGE_SECONDS" ]; then
++                      echo "Snapshot is fresh."
++                      exit 0
++                  fi
++
++                  if [ -z "$CRON_SECRET" ]; then
++                      echo "::error::Cannot refresh: the CRON_SECRET repo secret is not set."
++                      exit 1
++                  fi
++
++                  echo "Calling /api/refresh-github."
++                  if ! curl -fsS --max-time 60 --retry 3 --retry-all-errors --retry-delay 60 \
++                      -H "Authorization: Bearer $CRON_SECRET" \
++                      "$SITE_URL/api/refresh-github"; then
++                      echo "::error::/api/refresh-github failed after 3 retries (401 = CRON_SECRET differs between GitHub and Vercel, 500 = the GitHub fetch failed). Check the Vercel function logs."
++                      exit 1
++                  fi
++                  echo
++
++                  # Revalidation is synchronous, but give the CDN up to a minute to serve the new page.
++                  after=""
++                  for attempt in 1 2 3 4 5 6; do
++                      after=$(read_fetched_at)
++                      if [ -n "$after" ] && { [ -z "$before" ] || [[ "$after" > "$before" ]]; }; then
++                          break
++                      fi
++                      after=""
++                      sleep 10
++                  done
++
++                  if [ -z "$after" ]; then
++                      echo "::error::The refresh call succeeded, but fetchedAt did not change (still ${before:-unreadable}). Check the Vercel function logs for /api/refresh-github."
++                      exit 1
++                  fi
++
++                  echo "Refreshed: fetchedAt=$after"
++
++                  if [ "${FORCE_REFRESH:-false}" = "true" ]; then
++                      echo "Forced refresh succeeded."
++                      exit 0
++                  fi
++
++                  echo "::error::The snapshot was stale (fetchedAt=${before:-unreadable}) and the monitor refreshed it. The page is fresh again, but the Vercel cron did not refresh it: check CRON_SECRET in Vercel and the cron log."
++                  exit 1
+diff --git a/GITHUB_STATS_AUTO_REFRESH_PLAN.md b/GITHUB_STATS_AUTO_REFRESH_PLAN.md
+index 9f0062f..6fe96eb 100644
+--- a/GITHUB_STATS_AUTO_REFRESH_PLAN.md
++++ b/GITHUB_STATS_AUTO_REFRESH_PLAN.md
+@@ -1,90 +1,117 @@
+-# GitHub Stats Auto-Refresh Plan
+-
+-Status: **implemented** — the homepage GitHub statistics now refresh once daily through a
+-secret-protected on-demand revalidation endpoint.
+-
+-## Final design
+-
+-```mermaid
+-graph LR
+-    A[Vercel cron<br/>0 17 * * * UTC] -->|GET| B[/api/refresh-github]
+-    B -->|CRON_SECRET check| C[res.revalidate'/']
+-    C --> D[getStaticProps]
+-    D --> E[loadGitHubSnapshot]
+-    E -->|REST calls| F[api.github.com]
+-    E -->|HTML scrape| G[github.com/users/.../contributions]
+-    E --> H[GitHubSnapshot]
+-    H --> I[Rebuilt page HTML + __NEXT_DATA__]
++# GitHub Stats Auto-Refresh
++
++Status: **implemented**. The homepage GitHub statistics refresh once a day through a
++secret-protected revalidation endpoint, and a GitHub Actions monitor checks every day that the
++live page is actually fresh.
++
++## Design
++
++```
++Vercel cron 0 17 * * * UTC (Hobby: fires 17:00-17:59 UTC, never retries)
++  -> GET /api/refresh-github            Authorization: Bearer $CRON_SECRET (401 otherwise)
++     -> res.revalidate('/')
++        -> getStaticProps -> loadGitHubSnapshot()
++             Promise.all, 5 s timeout each, all with Authorization: Bearer $GITHUB_TOKEN
++             |- REST GET /users/Yahiro025
++             |- REST GET /users/Yahiro025/repos
++             |- REST GET /users/Yahiro025/events/public
++             '- GraphQL POST /graphql  contributionsCollection.contributionCalendar
++           any failure -> null -> getStaticProps throws -> Vercel keeps the last good page
++
++GitHub Actions .github/workflows/github-snapshot-monitor.yml (17 19 * * * UTC + manual run)
++  read fetchedAt from the live homepage
++    age <= 6 h ............................... pass
++    stale or unreadable -> GET /api/refresh-github (3 retries, 60 s apart)
++                        -> wait up to 60 s for a strictly newer fetchedAt
++                        -> job FAILS either way, so GitHub emails the owner that the cron missed;
++                           the error says whether the page was repaired
++  manual run with force_refresh -> refresh -> pass only if fetchedAt became strictly newer
+ ```
+ 
+-`0 17 * * *` is UTC, which is 1:00 AM the next day in Asia/Manila (UTC+8), so the cron fires
+-once daily at 1:00 AM local time.
++`0 17 * * *` is UTC, which is 1:00 AM the next day in Asia/Manila (UTC+8).
+ 
+ | Environment | Refresh mechanism | Interval |
+ |---|---|---|
+-| `npm run dev` | Every page load re-runs `getStaticProps` | ~instant |
+-| Production (Vercel) | Cron → `/api/refresh-github` → `res.revalidate('/')` | Once daily at 1:00 AM Asia/Manila |
++| `npm run dev` | Every page load re-runs `getStaticProps` | instant |
++| Production (Vercel) | Cron -> `/api/refresh-github` -> `res.revalidate('/')` | once daily, 01:00-01:59 Asia/Manila |
++| Production (repair) | Monitor -> `/api/refresh-github`, only when the page is older than 6 h | daily check at 03:17 Asia/Manila |
+ 
+-`getStaticProps` no longer declares `revalidate`; the cron endpoint is the only production
+-refresh trigger.
++`getStaticProps` declares no `revalidate`; the cron and the monitor are the only production
++refresh triggers. Every deploy also fetches a fresh snapshot at build time.
+ 
+ ## Data sources
+ 
+-**GitHub REST API** supplies the profile, repository, and event data:
++All calls go to `api.github.com` with the `GITHUB_TOKEN` bearer:
+ 
+ - `GET /users/Yahiro025` — name, avatar, bio, public repo count, followers, following
+ - `GET /users/Yahiro025/repos` — repositories sorted by last push, excluding forks and archived
+ - `GET /users/Yahiro025/events/public` — recent push and pull-request events
++- `POST /graphql` — `user(login: "Yahiro025").contributionsCollection.contributionCalendar`:
++  `totalContributions` and, per day, `date`, `contributionCount`, `contributionLevel`
++  (`NONE`..`FOURTH_QUARTILE`, mapped to levels 0-4)
+ 
+-**Contribution calendar (HTML scrape).** The exact per-day contribution counts are not exposed by
+-GitHub's REST API, so `loadGitHubSnapshot()` fetches the public HTML at
+-`https://github.com/users/Yahiro025/contributions` and `parseGitHubContributions()` reads the
+-total from the `N contributions in the last year` heading plus each `data-date` / `data-level`
+-cell and its matching `<tool-tip>` count.
+-
+-> [!WARNING]
+-> This scrape depends on GitHub's public markup and **can break if GitHub changes that HTML**.
+-> When parsing yields nothing, the panel degrades to the recent-commits view and shows
+-> `Activity unavailable` instead of a stale number. It does not fail the snapshot, so the page
+-> keeps rebuilding even if the calendar markup changes.
++GraphQL rejects anonymous requests, so `GITHUB_TOKEN` is **required**. The calendar covers the
++last 365 days, so its total can differ by a few from the number on the GitHub profile page.
+ 
+ ## Failure behaviour
+ 
+-- If any REST request fails, `loadGitHubSnapshot()` returns `null`.
+-- `getStaticProps` then throws, so Vercel **keeps serving the last successful page** instead of
+-  publishing an empty snapshot, and the cron invocation reports a failure.
+-- The endpoint returns 401 without an exact `Authorization: Bearer ${CRON_SECRET}` header, and
+-  405 with `Allow: GET` for any non-GET method. Revalidation errors return a generic 500 without
+-  exposing the secret or internal error details.
+-- A server-only `GITHUB_TOKEN` is optional and only raises the REST rate limit.
++`loadGitHubSnapshot()` returns `null` when:
++
++- `GITHUB_TOKEN` is missing (no request is made),
++- any REST or GraphQL request fails, times out, or returns a non-2xx status,
++- the GraphQL body has an `errors` array, a null user, zero calendar days, or an unknown
++  `contributionLevel`.
++
++`getStaticProps` then throws, so Vercel keeps serving the last successful page. The site never
++shows a fake "0 contributions". A failed build also fails the deploy, which keeps the previous
++deployment live.
+ 
+-## Removed
++The endpoint returns 401 without an exact `Authorization: Bearer ${CRON_SECRET}` header, 405 with
++`Allow: GET` for any non-GET method, and a generic 500 when revalidation fails.
+ 
+-- `revalidate: 21600` on the homepage and the earlier "reduce the ISR interval to 1 hour"
+-  recommendation — the cron endpoint replaced both.
+-- Hardcoded `590` / `51` / `13` / `19` fallbacks in the GitHub panel; unavailable values now
+-  render as an em dash, and the activity header reads `Activity unavailable`.
++## Secrets
++
++| Secret | Where | Value |
++|---|---|---|
++| `CRON_SECRET` | Vercel (Production) **and** GitHub repo secrets | Same random value in both places. Vercel sends it to the cron; the monitor sends it to the endpoint. |
++| `GITHUB_TOKEN` | Vercel (Production and Preview) | Classic token with **no scopes** and no expiration. It only reads public data. |
++
++Rotate `CRON_SECRET` in both places at once, then redeploy. Local builds and `npm run dev` need
++`GITHUB_TOKEN` too: add it to `.env.local` (gitignored), or run
++`GITHUB_TOKEN=$(gh auth token) npm run build`.
++
++## Monitor caveats
++
++- GitHub disables scheduled workflows after 60 days without activity in a public repository.
++  The run history then stops and no email is sent. Re-enable with
++  `gh workflow enable github-snapshot-monitor.yml`.
++- Scheduled runs can start late or, under heavy GitHub load, be skipped. The next day's run
++  catches anything a skipped run missed.
++- A deploy within the 6 hours before 19:17 UTC makes the page fresh, so a cron miss on that day
++  goes unreported.
++- Failure emails need GitHub Settings -> Notifications -> Actions set to email you about failed
++  workflows. For scheduled workflows, GitHub notifies the user who last changed the `cron` line.
++- Refreshes within 10 minutes of each other on the same warm function reuse the in-memory
++  snapshot cache in `src/lib/github.ts`, so `fetchedAt` does not change. Wait 11 minutes after a
++  deploy or refresh before a forced manual run.
++- Manual check: `gh workflow run github-snapshot-monitor.yml`. Manual refresh:
++  `gh workflow run github-snapshot-monitor.yml -f force_refresh=true`.
+ 
+ ## Files
+ 
++- `src/lib/github.ts` — `loadGitHubSnapshot()`, GraphQL calendar parsing, REST normalization
++- `src/lib/github.test.mjs` — snapshot, GraphQL failure, and missing-token coverage
+ - `src/pages/api/refresh-github.ts` — GET-only, `CRON_SECRET`-protected revalidation endpoint
+-- `vercel.json` — daily cron entry pointing at that endpoint
+-- `src/pages/index.tsx` — `getStaticProps` throws when the snapshot is unavailable
+-- `src/components/landing/profile-reel.tsx` — honest empty-state copy, no hardcoded counts
+ - `src/lib/refresh-github.test.mjs` — auth, method guard, success, and failure coverage
++- `src/pages/index.tsx` — `getStaticProps` throws when the snapshot is unavailable
++- `vercel.json` — daily cron entry
++- `.github/workflows/github-snapshot-monitor.yml` — daily freshness check and repair
+ 
+ ## Verification
+ 
+ ```bash
+-node --test src/lib/*.test.mjs && npm run build
++npm run typecheck
++npm run test
++GITHUB_TOKEN=$(gh auth token) npm run build
++gh workflow run github-snapshot-monitor.yml -f force_refresh=true
+ ```
+-
+-## Deployment handoff (user-owned)
+-
+-1. Install the Vercel CLI: `npm i -g vercel`
+-2. Generate a strong secret locally, add it as the production `CRON_SECRET` value.
+-3. Optionally add a server-only `GITHUB_TOKEN` to raise the REST API rate limit.
+-4. Deploy, inspect the cron invocation in the Vercel logs, and confirm the homepage snapshot
+-   reports a newer `fetchedAt` value.
+-
+-Scheduled refresh is **not** confirmed until a real Vercel cron invocation succeeds in production.
+diff --git a/src/lib/github.test.mjs b/src/lib/github.test.mjs
+index a7d3c72..9ce3716 100644
+--- a/src/lib/github.test.mjs
++++ b/src/lib/github.test.mjs
+@@ -1,16 +1,17 @@
+ import assert from 'node:assert/strict'
+ import test from 'node:test'
+ 
+-import { loadGitHubSnapshot, parseGitHubContributions } from './github.ts'
++import { loadGitHubSnapshot } from './github.ts'
++
++// Never pass `undefined` as the token: it falls back to process.env.GITHUB_TOKEN.
++const TOKEN = 'test-token'
+ 
+ const jsonResponse = (value, status = 200) => new Response(
+     JSON.stringify(value),
+     { status, headers: { 'Content-Type': 'application/json' } }
+ )
+ 
+-const successFetch = async input => {
+-    const url = String(input)
+-
++const restResponse = url => {
+     if (url.endsWith('/users/Yahiro025')) {
+         return jsonResponse({
+             login: 'Yahiro025',
+@@ -66,10 +67,38 @@ const successFetch = async input => {
+     ])
+ }
+ 
+-test('normalizes public profile, repository, and push-event data', async () => {
++const DAYS = [
++    { date: '2026-09-13', contributionCount: 0, contributionLevel: 'NONE' },
++    { date: '2026-09-14', contributionCount: 3, contributionLevel: 'FIRST_QUARTILE' },
++    { date: '2026-09-15', contributionCount: 9, contributionLevel: 'FOURTH_QUARTILE' }
++]
++
++const calendarBody = (days = DAYS, totalContributions = 12) => ({
++    data: {
++        user: {
++            contributionsCollection: {
++                contributionCalendar: {
++                    totalContributions,
++                    weeks: [{ contributionDays: days }]
++                }
++            }
++        }
++    }
++})
++
++// Answers the three REST URLs with fixtures and hands the GraphQL request to `graphql`.
++const fakeFetch = (graphql = () => jsonResponse(calendarBody()), calls = []) => async (input, init) => {
++    const url = String(input)
++    calls.push({ url, init })
++
++    return url.endsWith('/graphql') ? graphql(init) : restResponse(url)
++}
++
++test('normalizes profile, repository, push-event, and contribution data', async () => {
++    const calls = []
+     const snapshot = await loadGitHubSnapshot(
+-        undefined,
+-        successFetch,
++        TOKEN,
++        fakeFetch(undefined, calls),
+         () => new Date('2026-08-30T00:00:00.000Z')
+     )
+ 
+@@ -78,51 +107,57 @@ test('normalizes public profile, repository, and push-event data', async () => {
+     assert.equal(snapshot?.repos[0]?.name, 'ScholarAid')
+     assert.equal(snapshot?.commits[0]?.url, 'https://github.com/Yahiro025/ScholarAid/commit/abc123')
+     assert.equal(snapshot?.fetchedAt, '2026-08-30T00:00:00.000Z')
++    assert.equal(snapshot?.totalContributions, 12)
++    assert.deepEqual(snapshot?.contributions, [
++        { date: '2026-09-13', count: 0, level: 0 },
++        { date: '2026-09-14', count: 3, level: 1 },
++        { date: '2026-09-15', count: 9, level: 4 }
++    ])
++
++    const graphqlCall = calls.find(call => call.url === 'https://api.github.com/graphql')
++    assert.equal(graphqlCall?.init?.method, 'POST')
++    assert.equal(graphqlCall?.init?.headers?.Authorization, `Bearer ${TOKEN}`)
++    assert.equal(JSON.parse(graphqlCall?.init?.body).variables.login, 'Yahiro025')
+ })
+ 
+-test('returns null when any GitHub request fails', async () => {
+-    const failedFetch = async () => jsonResponse(
+-        { message: 'rate limited' },
+-        500
+-    )
++test('returns null when a REST request fails even though the calendar succeeds', async () => {
++    const reposDown = async input => {
++        const url = String(input)
++
++        if (url.includes('/repos?')) return jsonResponse({ message: 'Server Error' }, 500)
+ 
+-    assert.equal(await loadGitHubSnapshot(undefined, failedFetch), null)
++        return fakeFetch()(input)
++    }
++
++    assert.equal(await loadGitHubSnapshot(TOKEN, reposDown), null)
+ })
+ 
+-test('parses contributions calendar HTML correctly', () => {
+-    const html = `
+-        <h2>590 contributions in the last year</h2>
+-        <table class="ContributionCalendar-grid">
+-            <td class="ContributionCalendar-day" data-date="2026-09-12" data-level="2" id="day-1"></td>
+-            <td class="ContributionCalendar-day" data-date="2026-09-13" data-level="0" id="day-2"></td>
+-        </table>
+-        <tool-tip for="day-1">5 contributions on September 12th.</tool-tip>
+-        <tool-tip for="day-2">No contributions on September 13th.</tool-tip>
+-    `
+-
+-    const parsed = parseGitHubContributions(html)
+-    assert.equal(parsed.totalContributions, 590)
+-    assert.equal(parsed.contributions.length, 2)
+-    assert.equal(parsed.contributions[0].date, '2026-09-12')
+-    assert.equal(parsed.contributions[0].count, 5)
+-    assert.equal(parsed.contributions[0].level, 2)
+-    assert.equal(parsed.contributions[1].date, '2026-09-13')
+-    assert.equal(parsed.contributions[1].count, 0)
+-    assert.equal(parsed.contributions[1].level, 0)
++test('returns null instead of a fake zero when the contribution calendar is unusable', async t => {
++    const cases = [
++        ['HTTP 401 from GraphQL', () => jsonResponse({ message: 'Bad credentials' }, 401)],
++        // GraphQL can return partial data next to errors; the errors alone must reject it.
++        ['errors array next to valid data', () => jsonResponse({ ...calendarBody(), errors: [{ message: 'API rate limit exceeded' }] })],
++        ['user is null', () => jsonResponse({ data: { user: null } })],
++        ['calendar has no days', () => jsonResponse(calendarBody([]))],
++        ['unknown contribution level', () => jsonResponse(calendarBody([
++            { date: '2026-09-13', contributionCount: 1, contributionLevel: 'FIFTH_QUARTILE' }
++        ]))],
++        ['level named like an Object prototype key', () => jsonResponse(calendarBody([
++            { date: '2026-09-13', contributionCount: 1, contributionLevel: 'toString' }
++        ]))],
++        ['network error', () => Promise.reject(new TypeError('fetch failed'))]
++    ]
++
++    for (const [name, graphql] of cases) {
++        await t.test(name, async () => {
++            assert.equal(await loadGitHubSnapshot(TOKEN, fakeFetch(graphql)), null)
++        })
++    }
+ })
+ 
+-test('parses multiline tooltip content', () => {
+-    const html = `
+-        <h2>7 contributions in the last year</h2>
+-        <table class="ContributionCalendar-grid">
+-            <td class="ContributionCalendar-day" data-date="2026-09-14" data-level="1" id="day-3"></td>
+-        </table>
+-        <tool-tip for="day-3">3 contributions
+-on September 14th.</tool-tip>
+-    `
+-
+-    const parsed = parseGitHubContributions(html)
+-    assert.equal(parsed.contributions.length, 1)
+-    assert.equal(parsed.contributions[0].date, '2026-09-14')
+-    assert.equal(parsed.contributions[0].count, 3)
++test('returns null without any request when no token is configured', async () => {
++    const calls = []
++
++    assert.equal(await loadGitHubSnapshot('', fakeFetch(undefined, calls)), null)
++    assert.equal(calls.length, 0)
+ })
+diff --git a/src/lib/github.ts b/src/lib/github.ts
+index fb43b3e..9c414b9 100644
+--- a/src/lib/github.ts
++++ b/src/lib/github.ts
+@@ -17,40 +17,62 @@ const stringField = (record: Record<string, unknown>, key: string) =>
+ const numberField = (record: Record<string, unknown>, key: string) =>
+     typeof record[key] === 'number' ? record[key] : 0
+ 
+-export const parseGitHubContributions = (
+-    html: string
+-): { totalContributions: number; contributions: GitHubContributionDay[] } => {
+-    if (!html || typeof html !== 'string') return { totalContributions: 0, contributions: [] }
+-
+-    const totalMatch = html.match(/([\d,]+)\s+contributions\s+in the last year/i)
+-    const totalContributions = totalMatch ? parseInt(totalMatch[1].replace(/,/g, ''), 10) : 0
+-
+-    const tooltipMap = new Map<string, number>()
+-    const tooltipRegex = /<tool-tip[^>]*for="([^"]+)"[^>]*>([\s\S]*?)<\/tool-tip>/g
+-    let tm: RegExpExecArray | null
+-    while ((tm = tooltipRegex.exec(html)) !== null) {
+-        const text = tm[2].trim()
+-        const countMatch = text.match(/^(\d+)\s+contribution/)
+-        tooltipMap.set(tm[1], countMatch ? parseInt(countMatch[1], 10) : 0)
++interface ContributionCalendar {
++    totalContributions: number
++    contributions: GitHubContributionDay[]
++}
++
++const CONTRIBUTIONS_QUERY = `query ($login: String!) {
++    user(login: $login) {
++        contributionsCollection {
++            contributionCalendar {
++                totalContributions
++                weeks { contributionDays { date contributionCount contributionLevel } }
++            }
++        }
+     }
++}`
++
++// A Map, not an object literal: a lookup like `levels['toString']` must miss, not return a prototype method.
++const CONTRIBUTION_LEVELS = new Map<string, number>([
++    ['NONE', 0],
++    ['FIRST_QUARTILE', 1],
++    ['SECOND_QUARTILE', 2],
++    ['THIRD_QUARTILE', 3],
++    ['FOURTH_QUARTILE', 4]
++])
++
++// GraphQL can answer HTTP 200 with an `errors` array, so every level is checked. Anything unexpected returns null, and the
++// caller keeps the last good page instead of publishing a fake zero.
++const parseContributionCalendar = (body: unknown): ContributionCalendar | null => {
++    if (!isRecord(body) || body.errors !== undefined || !isRecord(body.data)) return null
++
++    const user = body.data.user
++    if (!isRecord(user) || !isRecord(user.contributionsCollection)) return null
++
++    const calendar = user.contributionsCollection.contributionCalendar
++    if (!isRecord(calendar) || typeof calendar.totalContributions !== 'number' || !Array.isArray(calendar.weeks)) return null
+ 
+-    const tdMatches = html.match(/<td[^>]*class="[^"]*ContributionCalendar-day[^"]*"[^>]*>/g) || []
+     const contributions: GitHubContributionDay[] = []
+ 
+-    for (const td of tdMatches) {
+-        const date = td.match(/data-date="([^"]+)"/)?.[1]
+-        const levelStr = td.match(/data-level="(\d+)"/)?.[1]
+-        const id = td.match(/id="([^"]+)"/)?.[1]
+-        if (date) {
+-            const level = levelStr ? parseInt(levelStr, 10) : 0
+-            const count = id && tooltipMap.has(id) ? tooltipMap.get(id)! : (level > 0 ? level : 0)
+-            contributions.push({ date, level, count })
++    for (const week of calendar.weeks) {
++        if (!isRecord(week) || !Array.isArray(week.contributionDays)) return null
++
++        for (const day of week.contributionDays) {
++            if (!isRecord(day)) return null
++
++            const date = stringField(day, 'date')
++            const level = CONTRIBUTION_LEVELS.get(stringField(day, 'contributionLevel') ?? '')
++
++            if (!date || typeof day.contributionCount !== 'number' || level === undefined) return null
++
++            contributions.push({ date, count: day.contributionCount, level })
+         }
+     }
+ 
+-    contributions.sort((a, b) => a.date.localeCompare(b.date))
++    if (contributions.length === 0) return null
+ 
+-    return { totalContributions, contributions }
++    return { totalContributions: calendar.totalContributions, contributions }
+ }
+ 
+ const normalizeGitHubSnapshot = (
+@@ -58,7 +80,7 @@ const normalizeGitHubSnapshot = (
+     reposValue: unknown,
+     eventsValue: unknown,
+     fetchedAt: string,
+-    contributionsData?: { totalContributions?: number; contributions?: GitHubContributionDay[] }
++    calendar: ContributionCalendar
+ ): GitHubSnapshot | null => {
+     if (!isRecord(profileValue)) return null
+ 
+@@ -160,8 +182,6 @@ const normalizeGitHubSnapshot = (
+     }
+ 
+     const totalStars = repos.reduce((sum, repo) => sum + repo.stars, 0)
+-    const totalContributions = contributionsData?.totalContributions ?? 0
+-    const contributions = contributionsData?.contributions ?? []
+ 
+     return {
+         login,
+@@ -174,8 +194,8 @@ const normalizeGitHubSnapshot = (
+             ? profileValue.public_repos
+             : repos.length,
+         totalStars,
+-        totalContributions,
+-        contributions,
++        totalContributions: calendar.totalContributions,
++        contributions: calendar.contributions,
+         repos,
+         commits,
+         fetchedAt
+@@ -203,42 +223,40 @@ export const loadGitHubSnapshot = async (
+         return cachedSnapshot
+     }
+ 
++    // The contribution calendar is only available through GraphQL, which rejects anonymous requests.
++    if (!token) return null
++
+     const headers: HeadersInit = {
+         Accept: 'application/vnd.github+json',
+         'X-GitHub-Api-Version': '2022-11-28',
+-        'User-Agent': 'Portfolio-App'
++        'User-Agent': 'Portfolio-App',
++        Authorization: `Bearer ${token}`
+     }
+ 
+-    if (token) headers.Authorization = `Bearer ${token}`
+-
+     try {
+         const urls = [
+             'https://api.github.com/users/Yahiro025',
+             'https://api.github.com/users/Yahiro025/repos?per_page=100&sort=pushed',
+             'https://api.github.com/users/Yahiro025/events/public?per_page=30'
+         ]
+-        const responses = await Promise.all(urls.map(url => fetchImpl(url, withTimeout({ headers }, isDefaultFetch))))
++        const calendarRequest: RequestInit = {
++            method: 'POST',
++            headers,
++            body: JSON.stringify({ query: CONTRIBUTIONS_QUERY, variables: { login: 'Yahiro025' } })
++        }
++        const responses = await Promise.all([
++            ...urls.map(url => fetchImpl(url, withTimeout({ headers }, isDefaultFetch))),
++            fetchImpl('https://api.github.com/graphql', withTimeout(calendarRequest, isDefaultFetch))
++        ])
+ 
+         if (responses.some(response => !response.ok)) return null
+ 
+-        const [profile, repos, events] = await Promise.all(responses.map(response => response.json()))
++        const [profile, repos, events, calendarBody] = await Promise.all(responses.map(response => response.json()))
++        const calendar = parseContributionCalendar(calendarBody)
+ 
+-        let contributionsData: { totalContributions: number; contributions: GitHubContributionDay[] } | undefined
+-        try {
+-            const contribRes = await fetchImpl('https://github.com/users/Yahiro025/contributions', withTimeout({
+-                headers: {
+-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+-                }
+-            }, isDefaultFetch))
+-            if (contribRes.ok) {
+-                const html = await contribRes.text()
+-                contributionsData = parseGitHubContributions(html)
+-            }
+-        } catch {
+-            // Ignore failure for contributions - core snapshot still succeeds
+-        }
++        if (!calendar) return null
+ 
+-        const snapshot = normalizeGitHubSnapshot(profile, repos, events, now().toISOString(), contributionsData)
++        const snapshot = normalizeGitHubSnapshot(profile, repos, events, now().toISOString(), calendar)
+ 
+         if (isDefaultFetch && snapshot) {
+             cachedSnapshot = snapshot
