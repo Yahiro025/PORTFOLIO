@@ -1,0 +1,103 @@
+# Checks that the homepage GitHub snapshot is fresh. The Vercel cron in vercel.json is the only
+# routine trigger; this job verifies it and repairs a stale page.
+#
+# Scheduled run: fresh -> pass. Stale -> refresh -> the job FAILS either way, so GitHub emails the
+# owner that the Vercel cron did not do its job (the error says whether the repair worked).
+# Manual run with force_refresh: refresh -> pass only if fetchedAt became strictly newer.
+name: GitHub snapshot monitor
+
+on:
+    schedule:
+        # 19:17 UTC: after the Vercel cron window (17:00-17:59 UTC), off the busy top of the hour.
+        - cron: '17 19 * * *'
+    workflow_dispatch:
+        inputs:
+            force_refresh:
+                description: 'Call /api/refresh-github even if the snapshot looks fresh'
+                type: boolean
+                default: false
+
+permissions: {}
+
+concurrency:
+    group: github-snapshot-monitor
+    cancel-in-progress: false
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        env:
+            SITE_URL: https://bennettpayoyo.vercel.app
+            MAX_AGE_SECONDS: '21600'
+            CRON_SECRET: ${{ secrets.CRON_SECRET }}
+            # Empty on scheduled runs; 'true' only when a manual run ticks the box.
+            FORCE_REFRESH: ${{ inputs.force_refresh }}
+        steps:
+            - name: Check freshness, repair if stale
+              shell: bash
+              run: |
+                  set -euo pipefail
+
+                  # Prints the homepage fetchedAt (ISO 8601), or nothing when the page or the field is missing.
+                  read_fetched_at() {
+                      curl -fsS --max-time 30 --retry 3 --retry-all-errors --retry-delay 10 "$SITE_URL/" \
+                          | grep -o '"fetchedAt":"[^"]*"' | head -n 1 | cut -d '"' -f 4 || true
+                  }
+
+                  age_seconds() {
+                      echo $(( $(date -u +%s) - $(date -u -d "$1" +%s) ))
+                  }
+
+                  before=$(read_fetched_at)
+                  if [ -n "$before" ]; then
+                      echo "fetchedAt=$before age=$(age_seconds "$before")s limit=${MAX_AGE_SECONDS}s"
+                  else
+                      echo "::warning::Could not read fetchedAt from $SITE_URL/"
+                  fi
+
+                  if [ "${FORCE_REFRESH:-false}" != "true" ] && [ -n "$before" ] \
+                      && [ "$(age_seconds "$before")" -le "$MAX_AGE_SECONDS" ]; then
+                      echo "Snapshot is fresh."
+                      exit 0
+                  fi
+
+                  if [ -z "$CRON_SECRET" ]; then
+                      echo "::error::Cannot refresh: the CRON_SECRET repo secret is not set."
+                      exit 1
+                  fi
+
+                  echo "Calling /api/refresh-github."
+                  if ! curl -fsS --max-time 60 --retry 3 --retry-all-errors --retry-delay 60 \
+                      -H "Authorization: Bearer $CRON_SECRET" \
+                      "$SITE_URL/api/refresh-github"; then
+                      echo "::error::/api/refresh-github failed after 3 retries (401 = CRON_SECRET differs between GitHub and Vercel, 500 = the GitHub fetch failed). Check the Vercel function logs."
+                      exit 1
+                  fi
+                  echo
+
+                  # Revalidation is synchronous, but give the CDN up to a minute to serve the new page.
+                  after=""
+                  for attempt in 1 2 3 4 5 6; do
+                      after=$(read_fetched_at)
+                      if [ -n "$after" ] && { [ -z "$before" ] || [[ "$after" > "$before" ]]; }; then
+                          break
+                      fi
+                      after=""
+                      sleep 10
+                  done
+
+                  if [ -z "$after" ]; then
+                      echo "::error::The refresh call succeeded, but fetchedAt did not change (still ${before:-unreadable}). Check the Vercel function logs for /api/refresh-github."
+                      exit 1
+                  fi
+
+                  echo "Refreshed: fetchedAt=$after"
+
+                  if [ "${FORCE_REFRESH:-false}" = "true" ]; then
+                      echo "Forced refresh succeeded."
+                      exit 0
+                  fi
+
+                  echo "::error::The snapshot was stale (fetchedAt=${before:-unreadable}) and the monitor refreshed it. The page is fresh again, but the Vercel cron did not refresh it: check CRON_SECRET in Vercel and the cron log."
+                  exit 1
