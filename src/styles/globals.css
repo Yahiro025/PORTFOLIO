@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 /* ejected from shadcn@4.2.0 */
 @theme inline {
   @keyframes accordion-down {
@@ -271,7 +270,6 @@ body {
     color: var(--bone);
     caret-color: var(--ember);
     font-feature-settings: 'ss01', 'kern';
-    text-rendering: optimizeLegibility;
 }
 
 ::selection {
@@ -414,7 +412,8 @@ body[data-cursor='orbit-right'] .arrow-right { display: block; }
 .gravity-cursor.is-on-accent .gravity-cursor-text { color: var(--ink); }
 
 /* Hero glyph and its docked twin in the header. */
-.hero-portrait { transform-origin: 50% 35%; will-change: transform; }
+.hero-portrait { transform-origin: 50% 35%; }
+#top:not(.is-offscreen) .hero-portrait { will-change: transform; }
 .hero-glyph { transform-origin: 0 0; }
 .hero-glyph.is-flying, .hero-glyph.is-docked { z-index: 55; }
 .glyph-mass { fill: var(--ember); transition: fill 0.4s ease; }
@@ -431,7 +430,6 @@ html[data-header-tone='bone'] .hero-glyph.is-docked .glyph-small { fill: var(--i
 html[data-header-tone='bone'] .hero-glyph.is-docked .glyph-ring { stroke: var(--ink); }
 .dock-mini { opacity: 0; transition: opacity 0.3s ease; }
 html.is-scrolled:not(.glyph-docked):not(.glyph-flying) .dock-mini { opacity: 1; }
-.hero-lockup .hero-fade { opacity: var(--fade, 1); }
 .hero-tap-hint { transition: opacity 0.4s ease; }
 html:not(.hint-live) .hero-tap-hint { opacity: 0; }
 
@@ -496,8 +494,9 @@ html.js-motion .is-struck .mf-underline::after { transform: scaleX(1); }
 .orbit-card {
     position: absolute; top: 0; left: 0; border-radius: 6px; overflow: hidden;
     background: var(--ink-2); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
-    will-change: transform, opacity; cursor: pointer;
+    cursor: pointer;
 }
+.orbit-layer.is-active .orbit-card { will-change: transform, opacity; }
 .orbit-card img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; pointer-events: none; -webkit-user-drag: none; }
 .orbit-focus { transform-origin: 0 0; }
 .orbit-slide { opacity: 0; transition: opacity 0.8s ease; }
@@ -526,7 +525,7 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 .cn-ring { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.22; vector-effect: non-scaling-stroke; }
 .cn-track {
     position: absolute; left: 50%; top: 50%; width: 0; height: 0;
-    transform-origin: 0 0; will-change: transform;
+    transform-origin: 0 0;
     animation: cn-spin var(--dur, 30s) linear infinite;
 }
 .cn-offset {
@@ -536,9 +535,12 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 .cn-offset > .cn-track { left: 0; top: 0; }
 .cn-counter {
     position: absolute; left: 0; top: 0; width: 0; height: 0;
-    transform-origin: 0 0; will-change: transform;
+    transform-origin: 0 0;
     animation: cn-spin var(--dur, 30s) linear infinite reverse;
 }
+.cn-field:not(.is-paused) .cn-track,
+.cn-field:not(.is-paused) .cn-counter,
+.cn-field:not(.is-paused) .cn-cases { will-change: transform; }
 .cn-field.is-paused .cn-track,
 .cn-field.is-paused .cn-counter,
 .cn-field.is-paused .cn-cases { animation-play-state: paused; }
@@ -568,7 +570,7 @@ html.rich-motion .cn-section { margin-top: -100svh; }
     opacity: 0; transition: opacity 0.3s ease;
 }
 .cn-guest.is-in { opacity: 1; }
-.cn-cases { transform-origin: 50% 50%; animation: cn-spin 70s linear infinite; will-change: transform; pointer-events: none; }
+.cn-cases { transform-origin: 50% 50%; animation: cn-spin 70s linear infinite; pointer-events: none; }
 .cn-center {
     --cn-c: clamp(124px, 16vh, 144px);
     width: var(--cn-c); height: var(--cn-c);
@@ -647,8 +649,8 @@ html.rich-motion .cn-section { margin-top: -100svh; }
     width: calc(var(--ro) * 2); aspect-ratio: 1;
     margin: calc(var(--ro) * -1) 0 0 calc(var(--ro) * -1);
     border-radius: 50%; border: calc(var(--ro) * 0.577) solid var(--ink);
-    opacity: var(--ring-in, 0);
-    transform: scale(calc(0.7 + 0.3 * var(--ring-in, 0)));
+    opacity: 0;
+    transform: scale(0.7);
 }
 .finale-orb {
     --orb-base: 12.5svh;
@@ -680,10 +682,10 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 /* Footer: only at the very top and the very end. */
 .site-footer {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-    color: var(--bone); mix-blend-mode: difference;
+    color: var(--bone);
     opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
 }
-.site-footer.is-visible { opacity: 1; pointer-events: auto; }
+.site-footer.is-visible { opacity: 1; pointer-events: auto; mix-blend-mode: difference; }
 .site-footer-row {
     display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px;
     padding: 13px 20px 17px; font-size: var(--text-small);
@@ -702,6 +704,8 @@ html.rich-motion .cn-section { margin-top: -100svh; }
 
 @media (prefers-reduced-motion: reduce) {
     .mf-ring-track, .cn-track, .cn-counter, .cn-cases, .site-footer-tick i, .orbit-progress::after { animation: none !important; }
+    .cn-track { transform: rotate(var(--a, 0deg)); }
+    .cn-counter { transform: rotate(calc(var(--a, 0deg) * -1)); }
     .cn-field { transition: none; }
     .rise,
     .mf-strike::after,
@@ -722,6 +726,33 @@ html:is(.is-scrolled, .glyph-docked, .glyph-flying) #dock-target { width: 44px; 
 .cn-flow > * { pointer-events: auto; }
 
 /* Performance: infinite animations rest while their element is hidden or off-screen. */
+#activity { content-visibility: auto; contain-intrinsic-size: auto 760px; }
 .site-footer:not(.is-visible) .site-footer-tick i,
 .seq-flood.is-offscreen .mf-ring-track,
 .is-offscreen .pulse-dot::after { animation-play-state: paused; }
+
+/* Lean mode for low-power or no-hardware-GPU devices. */
+html.low-power { scroll-behavior: auto; transition: none; }
+html.low-power .body-settle,
+html.low-power .pulse-dot::after,
+html.low-power .mf-ring-track,
+html.low-power .cn-track,
+html.low-power .cn-counter,
+html.low-power .cn-cases,
+html.low-power .site-footer-tick i,
+html.low-power .orbit-progress::after { animation: none !important; }
+html.low-power .cn-track { transform: rotate(var(--a, 0deg)); }
+html.low-power .cn-counter { transform: rotate(calc(var(--a, 0deg) * -1)); }
+html.low-power .cn-field,
+html.low-power .cn-center,
+html.low-power .cn-center-inner,
+html.low-power .cn-center a,
+html.low-power .work-lens,
+html.low-power .expand,
+html.low-power .rise,
+html.low-power .mf-strike::after,
+html.low-power .mf-underline::after,
+html.low-power .bio-underline::after,
+html.low-power .site-footer { transition: none !important; }
+html.low-power .site-footer.is-visible { mix-blend-mode: normal; background: var(--ink); color: var(--bone); }
+html.low-power .site-footer.is-end.is-visible { background: var(--bone); color: var(--ink); }

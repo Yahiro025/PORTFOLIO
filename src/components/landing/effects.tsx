@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react'
 import Lenis from 'lenis'
 
 import { addLoop, setBeforeFrame, wakeFrame } from '@/lib/frame'
-import { finePointer, prefersReducedMotion, richMotion } from '@/lib/motion'
+import { finePointer, isLowPowerDevice, prefersReducedMotion, richMotion } from '@/lib/motion'
 
 // Every click shifts the one accent body to the next colour; ink text stays legible on all three.
 const ACCENTS = [
@@ -33,7 +33,7 @@ const GravityCursor: FC = (): ReactNode => {
 
     useEffect(() => {
         const root = rootRef.current
-        if (!root || !finePointer() || prefersReducedMotion()) return
+        if (!root || !finePointer() || prefersReducedMotion() || isLowPowerDevice()) return
 
         let targetX = 0
         let targetY = 0
@@ -44,6 +44,8 @@ const GravityCursor: FC = (): ReactNode => {
         let well: HTMLElement | null = null
         let releaseTimer = 0
         let restTimer = 0
+        let scrollSettleTimer = 0
+        let lastScrollCapture = 0
 
         // Wells are static page elements: collect them once.
         const wells = Array.from(document.querySelectorAll<HTMLElement>('[data-gravity-well]'))
@@ -52,9 +54,9 @@ const GravityCursor: FC = (): ReactNode => {
         let wellRect: DOMRect | null = null
         let captureDirty = false
         let restDirty = false
+        let accentDirty = false
         let onAccent = false
         let pointerMoved = false
-        let skip = 0
         let stop: (() => void) | null = null
 
         const readCapture = () => {
@@ -96,10 +98,10 @@ const GravityCursor: FC = (): ReactNode => {
             read: () => {
                 if (captureDirty) readCapture()
                 else if (well) wellRect = well.getBoundingClientRect()
-                // The inversion eases over 0.3s, so while only the page scrolls a sparser hit test is invisible.
-                if (pointerMoved || skip-- <= 0) {
+                // Hit-test only when the pointer moves or once scrolling settles.
+                if (pointerMoved || accentDirty) {
                     pointerMoved = false
-                    skip = 2
+                    accentDirty = false
                     const under = document.elementFromPoint(x, y)
                     onAccent = !!under?.closest('.tone-ember, [data-cursor-invert]')
                 }
@@ -171,8 +173,23 @@ const GravityCursor: FC = (): ReactNode => {
 
         const onLeave = () => root.classList.remove('is-live', 'is-resting')
         const onScroll = () => {
-            captureDirty = true
-            wake()
+            if (!known) return
+            const now = performance.now()
+            if (now - lastScrollCapture >= 120) {
+                lastScrollCapture = now
+                captureDirty = true
+                wake()
+            } else if (well) {
+                wake()
+            }
+            window.clearTimeout(scrollSettleTimer)
+            scrollSettleTimer = window.setTimeout(() => {
+                scrollSettleTimer = 0
+                lastScrollCapture = performance.now()
+                accentDirty = true
+                captureDirty = true
+                wake()
+            }, 140)
         }
 
         window.addEventListener('pointermove', onMove, { passive: true })
@@ -187,6 +204,7 @@ const GravityCursor: FC = (): ReactNode => {
             document.documentElement.removeEventListener('pointerleave', onLeave)
             window.clearTimeout(releaseTimer)
             window.clearTimeout(restTimer)
+            window.clearTimeout(scrollSettleTimer)
             stop?.()
         }
     }, [])
@@ -207,8 +225,10 @@ export const Effects: FC = (): ReactNode => {
     useEffect(() => {
         const root = document.documentElement
         const reduced = prefersReducedMotion()
+        const lowPower = isLowPowerDevice()
 
-        root.classList.toggle('js-motion', !reduced)
+        root.classList.toggle('low-power', lowPower)
+        root.classList.toggle('js-motion', !reduced && !lowPower)
         root.classList.toggle('rich-motion', richMotion())
 
         let accent = 0
@@ -226,7 +246,7 @@ export const Effects: FC = (): ReactNode => {
         document.addEventListener('click', onClick)
 
         let lenis: Lenis | undefined
-        if (!reduced) {
+        if (!reduced && !lowPower) {
             lenis = new Lenis({
                 duration: 1.35,
                 wheelMultiplier: 0.65,

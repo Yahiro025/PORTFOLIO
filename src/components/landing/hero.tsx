@@ -8,6 +8,7 @@ import { DepthPortrait } from '@/components/landing/depth-portrait'
 import { addLoop, requestFrame } from '@/lib/frame'
 import {
     clamp01,
+    isLowPowerDevice,
     normAngle,
     prefersReducedMotion,
     smoothstep,
@@ -70,7 +71,7 @@ const SPRING_K = 160
 const SPRING_D = 16
 const GATE_SEC = 0.5
 const WAKE = 0.05
-const MAX_STEP = 1 / 180
+const MAX_STEP = 1 / 90
 const ENV_HOLD = 0.9
 const ENV_RELEASE = 1.8
 const SMALL_ANGLE = Math.atan2(-111.5, 149)
@@ -183,7 +184,7 @@ export const Hero: FC = (): ReactNode => {
     const taglineRef = useRef<HTMLParagraphElement>(null)
     const nameRef = useRef<HTMLSpanElement>(null)
     const proofRef = useRef<HTMLSpanElement>(null)
-    const fadeRef = useRef<HTMLDivElement>(null)
+    const heroFadeRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const hero = heroRef.current
@@ -196,6 +197,7 @@ export const Hero: FC = (): ReactNode => {
 
         const root = document.documentElement
         const reduced = prefersReducedMotion()
+        const staticMode = reduced || isLowPowerDevice()
         const small = makeSatellite(SMALL_ANGLE, 0)
         const ring = makeSatellite(RING_ANGLE, 0.5)
 
@@ -215,7 +217,7 @@ export const Hero: FC = (): ReactNode => {
         let attractor = { x: 0, y: 0 }
         let reachLimit = Infinity
         let clicked = false
-        let introDone = reduced
+        let introDone = staticMode
         let stopLoop: (() => void) | null = null
         let last = 0
         let animation: Animation | null = null
@@ -251,9 +253,10 @@ export const Hero: FC = (): ReactNode => {
         }
 
         const updateHint = () => {
-            root.classList.toggle('hint-live', introDone && !clicked && !docked && !flying && !reduced)
+            root.classList.toggle('hint-live', introDone && !clicked && !docked && !flying && !staticMode)
         }
 
+        const guideHidden = [true, true]
         const drawGuide = (s: Satellite, index: number) => {
             const guide = guideRefs.current[index]
             const focus = focusRefs.current[index]
@@ -261,12 +264,15 @@ export const Hero: FC = (): ReactNode => {
             if (!guide || !focus || !label) return
             const g = s.guide
             if (!g) {
+                if (guideHidden[index]) return
+                guideHidden[index] = true
                 guide.setAttribute('opacity', '0')
                 focus.setAttribute('opacity', '0')
                 label.setAttribute('opacity', '0')
 
                 return
             }
+            guideHidden[index] = false
             const op = g.opacity.toFixed(3)
             guide.setAttribute('cx', g.cx.toFixed(1))
             guide.setAttribute('cy', g.cy.toFixed(1))
@@ -402,7 +408,7 @@ export const Hero: FC = (): ReactNode => {
         const heroJob: FrameJob = { write: frame }
 
         const wake = () => {
-            if (stopLoop || reduced) return
+            if (stopLoop || staticMode) return
             last = 0
             stopLoop = addLoop(heroJob)
         }
@@ -507,28 +513,40 @@ export const Hero: FC = (): ReactNode => {
         }
 
         // The name dissolves letter by letter, right to left, over the first stretch of scroll.
-        const nameChars = nameRef.current ? splitChars(nameRef.current, 'dissolve') : []
-        const proofChars = proofRef.current ? splitChars(proofRef.current, 'dissolve') : []
-        const chars = [...nameChars, ...proofChars]
+        let nameChars: HTMLSpanElement[] = []
+        let nameSplit = false
+        const ensureNameChars = () => {
+            if (nameSplit || !nameRef.current) return
+            nameSplit = true
+            const existing = nameRef.current.querySelectorAll<HTMLSpanElement>('.dissolve')
+            nameChars = existing.length ? Array.from(existing) : splitChars(nameRef.current, 'dissolve')
+        }
         const portrait = hero.querySelector<HTMLElement>('.hero-portrait')
         let lastP = -1
         let lastY = -1
         const dissolve = () => {
-            if (reduced) return
+            if (staticMode) return
             const y = window.scrollY
+            if (y > window.innerHeight * 1.4 && lastY > window.innerHeight * 1.4) {
+                lastY = y
+
+                return
+            }
+            if (y > 0) ensureNameChars()
             const distance = Math.min(window.innerWidth, window.innerHeight) * 0.7
             const p = clamp01(y / distance)
             if (p !== lastP) {
                 lastP = p
-                const n = chars.length
+                const n = nameChars.length
                 const WINDOW = 9
                 const span = WINDOW / (n + WINDOW)
-                chars.forEach((char, i) => {
+                nameChars.forEach((char, i) => {
                     const a = clamp01((p - (n - 1 - i) / (n + WINDOW)) / span)
                     const opacity = (1 - smoothstep(a)).toFixed(2)
                     if (char.style.opacity !== opacity) char.style.opacity = opacity
                 })
-                fadeRef.current?.style.setProperty('--fade', (1 - clamp01(p * 1.6)).toFixed(3))
+                if (proofRef.current) proofRef.current.style.opacity = (1 - clamp01(p * 1.4)).toFixed(3)
+                if (heroFadeRef.current) heroFadeRef.current.style.opacity = (1 - clamp01(p * 1.6)).toFixed(3)
                 if (taglineRef.current) taglineRef.current.style.opacity = (1 - clamp01(p * 2)).toFixed(3)
             }
             // The portrait lags the page and leans in, so the hero feels deeper than one layer.
@@ -540,10 +558,15 @@ export const Hero: FC = (): ReactNode => {
             lastY = y
         }
 
+        let wasScrolled = root.classList.contains('is-scrolled')
         checkScroll = () => {
             const y = window.scrollY
-            root.classList.toggle('is-scrolled', y > DOCK_AT)
-            if (reduced) return
+            const next = y > DOCK_AT
+            if (next !== wasScrolled) {
+                wasScrolled = next
+                root.classList.toggle('is-scrolled', next)
+            }
+            if (staticMode) return
             if (!docked && !flying && y > DOCK_AT) dock()
             else if (docked && !flying && y < UNDOCK_AT) undock()
         }
@@ -557,7 +580,7 @@ export const Hero: FC = (): ReactNode => {
         const onScroll = () => requestFrame(scrollJob)
 
         const onHeroClick = (event: MouseEvent) => {
-            if (reduced || docked || flying) return
+            if (staticMode || docked || flying) return
             if ((event.target as HTMLElement).closest('a, button')) return
             const rect = hero.getBoundingClientRect()
             clicked = true
@@ -567,13 +590,13 @@ export const Hero: FC = (): ReactNode => {
 
         // Once docked, gravity follows the visitor: every click tugs the header mark.
         const onDocumentClick = (event: MouseEvent) => {
-            if (reduced || !docked || flying) return
+            if (staticMode || !docked || flying) return
             const t = dockTransform
             pull((event.clientX - t.tx) / t.scale, (event.clientY + dockScrollY - t.ty) / t.scale, 360 * unit)
         }
 
         const onSection = () => {
-            if (reduced || !docked || flying) return
+            if (staticMode || !docked || flying) return
             const angle = Math.random() * Math.PI * 2
             pull(cx + Math.cos(angle) * 300 * unit, cy + Math.sin(angle) * 300 * unit, 300 * unit)
         }
@@ -581,7 +604,7 @@ export const Hero: FC = (): ReactNode => {
         layout()
         dissolve()
         checkScroll()
-        if (!reduced) {
+        if (!staticMode) {
             const intro = (s: Satellite, offset: number, apo: number, peri: number) => {
                 s.resting = false
                 s.theta = s.homeA - offset
@@ -594,12 +617,19 @@ export const Hero: FC = (): ReactNode => {
             wake()
         }
         // The hint arms once the bodies have swung into view, not when they fully come to rest.
-        const hintTimer = window.setTimeout(() => {
+        const hintTimer = staticMode ? 0 : window.setTimeout(() => {
             introDone = true
             updateHint()
         }, 2400)
         const offscreen = new IntersectionObserver(([entry]) => {
             hero.classList.toggle('is-offscreen', !entry.isIntersecting)
+            if (!entry.isIntersecting && !docked && stopLoop) {
+                stopLoop()
+                stopLoop = null
+                last = 0
+            } else if (entry.isIntersecting && (!small.resting || !ring.resting)) {
+                wake()
+            }
         })
         offscreen.observe(hero)
 
@@ -624,9 +654,10 @@ export const Hero: FC = (): ReactNode => {
             window.clearTimeout(hintTimer)
             stopLoop?.()
             animation?.cancel()
-            chars.forEach(c => { c.style.opacity = '' })
+            nameChars.forEach(c => { c.style.opacity = '' })
+            if (proofRef.current) proofRef.current.style.opacity = ''
             if (taglineRef.current) taglineRef.current.style.opacity = ''
-            fadeRef.current?.style.removeProperty('--fade')
+            if (heroFadeRef.current) heroFadeRef.current.style.opacity = ''
             if (portrait) portrait.style.transform = ''
             root.classList.remove('glyph-docked', 'glyph-flying', 'hint-live')
         }
@@ -667,10 +698,7 @@ export const Hero: FC = (): ReactNode => {
                 backend · systems · open source
             </p>
 
-            <div
-                ref={fadeRef}
-                className='hero-lockup relative z-20 mt-auto flex cursor-auto flex-col gap-4 bg-[linear-gradient(to_top,var(--ink)_60%,transparent)] px-5 pb-24 pt-24 sm:px-10 md:max-w-[26rem] md:bg-none md:pb-24 md:pt-0'
-            >
+            <div className='hero-lockup relative z-20 mt-auto flex cursor-auto flex-col gap-4 bg-[linear-gradient(to_top,var(--ink)_60%,transparent)] px-5 pb-24 pt-24 sm:px-10 md:max-w-[26rem] md:bg-none md:pb-24 md:pt-0'>
                 <h1 className='text-title font-semibold tracking-[-0.02em]'>
                     <span className='sr-only'>Bennett Payoyo</span>
                     <span ref={nameRef} aria-hidden>Bennett Payoyo</span>
@@ -679,7 +707,7 @@ export const Hero: FC = (): ReactNode => {
                     <span className='sr-only'>{PROOF}</span>
                     <span ref={proofRef} aria-hidden>{PROOF}</span>
                 </p>
-                <div className='hero-fade flex flex-col gap-4'>
+                <div ref={heroFadeRef} className='hero-fade flex flex-col gap-4'>
                     <p className='flex items-center gap-2.5 text-small text-bone'>
                         <span className='pulse-dot size-2 shrink-0 rounded-full bg-ember' />
                         Open to internships and freelance work

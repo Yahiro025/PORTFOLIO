@@ -7,6 +7,7 @@ import { ArrowUpRight, Plus, Trophy } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { addLoop } from '@/lib/frame'
+import { isLowPowerDevice } from '@/lib/motion'
 import { projects } from '@/constants/folio'
 
 
@@ -120,13 +121,16 @@ export const WorkIndex: FC = (): ReactNode => {
     // The lens trails the pointer on devices that hover.
     useEffect(() => {
         const lens = lensRef.current
-        if (!lens || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+        if (!lens || isLowPowerDevice() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+        const section = lens.closest('section')
+        if (!section) return
 
         let tx = 0
         let ty = 0
         let x = 0
         let y = 0
         let near = false
+        let primed = false
         let stop: (() => void) | null = null
 
         const place = () => {
@@ -145,28 +149,33 @@ export const WorkIndex: FC = (): ReactNode => {
         }
 
         // Off-screen the lens is invisible: keep it on the pointer without animating.
-        const section = lens.closest('section')
         const observer = new IntersectionObserver(([entry]) => {
             near = entry.isIntersecting
         }, { rootMargin: '25% 0px' })
-        if (section) observer.observe(section)
+        observer.observe(section)
 
         const onMove = (event: PointerEvent) => {
             tx = event.clientX
             ty = event.clientY
-            if (!near) {
+            if (!near || !primed) {
                 x = tx
                 y = ty
+                primed = true
                 place()
                 return
             }
             if (!stop) stop = addLoop(job)
         }
+        const onLeave = () => {
+            primed = false
+        }
 
-        window.addEventListener('pointermove', onMove, { passive: true })
+        section.addEventListener('pointermove', onMove, { passive: true })
+        section.addEventListener('pointerleave', onLeave)
 
         return () => {
-            window.removeEventListener('pointermove', onMove)
+            section.removeEventListener('pointermove', onMove)
+            section.removeEventListener('pointerleave', onLeave)
             observer.disconnect()
             stop?.()
         }

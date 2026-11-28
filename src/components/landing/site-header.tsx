@@ -10,6 +10,12 @@ import { CONTACT } from '@/constants/folio'
 
 export type Tone = 'ink' | 'bone' | 'ember'
 
+interface SectionBound {
+    el: HTMLElement
+    top: number
+    bottom: number
+}
+
 const NAV = [
     { href: '#open-source', label: 'Open source' },
     { href: '#work', label: 'Work' },
@@ -22,18 +28,43 @@ export const SiteHeader: FC = (): ReactNode => {
 
     useEffect(() => {
         const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-tone]'))
+        let bounds: SectionBound[] = []
+        let boundsDirty = true
         let lastSection = ''
         let lastTone = ''
         let current: HTMLElement | undefined
 
+        const refreshBounds = () => {
+            const scrollY = window.scrollY
+            bounds = sections.map(el => {
+                // Sticky sections (such as .seq-stage) stay pinned while their parent scrolls,
+                // so document bounds span from their static start to their parent's bottom.
+                if (getComputedStyle(el).position === 'sticky' && el.parentElement) {
+                    const parentRect = el.parentElement.getBoundingClientRect()
+                    const prevRect = el.previousElementSibling?.getBoundingClientRect()
+
+                    return {
+                        el,
+                        top: (prevRect ? prevRect.bottom : parentRect.top) + scrollY,
+                        bottom: parentRect.bottom + scrollY
+                    }
+                }
+                const rect = el.getBoundingClientRect()
+
+                return {
+                    el,
+                    top: rect.top + scrollY,
+                    bottom: rect.bottom + scrollY
+                }
+            })
+            boundsDirty = false
+        }
+
         const job: FrameJob = {
             read: () => {
-                const probe = 44
-                current = sections.find(node => {
-                    const rect = node.getBoundingClientRect()
-
-                    return rect.top <= probe && rect.bottom > probe
-                })
+                if (boundsDirty) refreshBounds()
+                const probe = window.scrollY + 44
+                current = bounds.find(bound => bound.top <= probe && bound.bottom > probe)?.el
             },
             write: () => {
                 if (!current) return
@@ -50,14 +81,26 @@ export const SiteHeader: FC = (): ReactNode => {
             }
         }
         const onScroll = () => requestFrame(job)
+        const onResize = () => {
+            boundsDirty = true
+            requestFrame(job)
+        }
 
-        onScroll()
+        onResize()
         window.addEventListener('scroll', onScroll, { passive: true })
-        window.addEventListener('resize', onScroll)
+        window.addEventListener('resize', onResize)
+
+        const main = document.getElementById('main')
+        let observer: ResizeObserver | null = null
+        if (main) {
+            observer = new ResizeObserver(onResize)
+            observer.observe(main)
+        }
 
         return () => {
             window.removeEventListener('scroll', onScroll)
-            window.removeEventListener('resize', onScroll)
+            window.removeEventListener('resize', onResize)
+            observer?.disconnect()
         }
     }, [])
 

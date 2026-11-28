@@ -11,7 +11,9 @@ import {
     clamp01,
     easeInOutCubic,
     easeOutCubic,
+    isLowPowerDevice,
     pinProgress,
+    prefersReducedMotion,
     richMotion
 } from '@/lib/motion'
 
@@ -35,8 +37,7 @@ interface Caption {
 interface CardState {
     data: OrbitCard
     dir: [number, number, number]
-    back: HTMLDivElement
-    front: HTMLDivElement
+    el: HTMLDivElement
     w: number
     h: number
     z: number
@@ -109,6 +110,20 @@ const hexToRgb = (value: string): [number, number, number] => {
     if (!/^[0-9a-f]{6}$/i.test(hex)) return [255, 91, 46]
 
     return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+}
+
+const curveAt = (t: number): number => {
+    if (t <= 0 || t >= 1.3) return 0
+    if (t < 0.3) {
+        const u = t / 0.3
+
+        return -140 * (1 - (1 - u) * (1 - u))
+    }
+    if (t < 0.85) return -140 + 140 * ((t - 0.3) / 0.55)
+    if (t < 1.02) return 22 * ((t - 0.85) / 0.17)
+    if (t < 1.18) return 22 - 34 * ((t - 1.02) / 0.16)
+
+    return -12 + 12 * ((t - 1.18) / 0.12)
 }
 
 const Word: FC<{ children: ReactNode; index: number }> = ({ children, index }): ReactNode => (
@@ -223,53 +238,47 @@ export const Sequence: FC = (): ReactNode => {
     useEffect(() => {
         const path = curveRef.current
         if (!path) return
-        const state = { v: 0 }
-        const render = () => path.setAttribute('d', `M0,160 L0,0 Q500,${state.v.toFixed(1)} 1000,0 L1000,160 Z`)
-        render()
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+        const render = (v: number) => path.setAttribute('d', `M0,160 L0,0 Q500,${v.toFixed(1)} 1000,0 L1000,160 Z`)
+        render(0)
+        if (prefersReducedMotion() || isLowPowerDevice()) return
         // Flat at rest; on arrival the edge swells up, then settles with a wobble.
-        // GSAP is fetched on first entry so it never weighs on the first load.
-        let timeline: { play: () => unknown; reverse: () => unknown; kill: () => unknown } | null = null
-        let pending: 'play' | 'reverse' | null = null
-        let loading = false
-        let cancelled = false
-        const loadGsap = () => {
-            if (loading) return
-            loading = true
-            import('gsap').then(({ default: gsap }) => {
-                if (cancelled) return
-                const sleep = () => { requestAnimationFrame(() => gsap.ticker.sleep()) }
-                timeline = gsap.timeline({ paused: true, onUpdate: render, onComplete: sleep, onReverseComplete: sleep })
-                    .to(state, { v: -140, duration: 0.3, ease: 'power2.out' })
-                    .to(state, { v: 0, duration: 0.55, ease: 'none' })
-                    .to(state, { v: 22, duration: 0.17, ease: 'none' })
-                    .to(state, { v: -12, duration: 0.16, ease: 'none' })
-                    .to(state, { v: 0, duration: 0.12, ease: 'none' })
-                if (pending === 'play') timeline.play()
-                else if (pending === 'reverse') timeline.reverse()
-                else sleep()
-            }).catch(() => undefined)
+        let t = 0
+        let dir = 0
+        let raf = 0
+        let lastTime = 0
+        const tick = (now: number) => {
+            const dt = lastTime ? Math.min(0.05, Math.max(0, (now - lastTime) / 1000)) : 1 / 60
+            lastTime = now
+            t = Math.max(0, Math.min(1.3, t + dir * dt))
+            render(curveAt(t))
+            if ((dir > 0 && t >= 1.3) || (dir < 0 && t <= 0)) {
+                raf = 0
+                lastTime = 0
+                dir = 0
+
+                return
+            }
+            raf = requestAnimationFrame(tick)
+        }
+        const go = (nextDir: 1 | -1) => {
+            if (nextDir > 0 && t >= 1.3 && dir >= 0) return
+            if (nextDir < 0 && t <= 0 && dir <= 0) return
+            dir = nextDir
+            if (!raf) {
+                lastTime = 0
+                raf = requestAnimationFrame(tick)
+            }
         }
         const observer = new IntersectionObserver(([entry]) => {
             const action = entry.isIntersecting ? 'play' : entry.boundingClientRect.top > 0 ? 'reverse' : null
-            if (!action) return
-            if (!timeline) {
-                if (action === 'play' || loading) {
-                    pending = action
-                    loadGsap()
-                }
-            } else if (action === 'play') {
-                timeline.play()
-            } else {
-                timeline.reverse()
-            }
+            if (action === 'play') go(1)
+            else if (action === 'reverse') go(-1)
         }, { rootMargin: '0px 0px -15% 0px' })
         observer.observe(path.ownerSVGElement ?? path)
 
         return () => {
-            cancelled = true
             observer.disconnect()
-            timeline?.kill()
+            cancelAnimationFrame(raf)
         }
     }, [])
 
@@ -288,14 +297,16 @@ export const Sequence: FC = (): ReactNode => {
     // The ring's satellite leans toward the cursor.
     useEffect(() => {
         const sat = satRef.current
-        if (!sat || !window.matchMedia('(pointer: fine)').matches) return
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+        const flood = floodRef.current
+        if (!sat || !flood || !window.matchMedia('(pointer: fine)').matches) return
+        if (prefersReducedMotion() || isLowPowerDevice()) return
         const NEAR = 260
         const FORCE = 0.95
         const MAX = 80
         let px = 0
         let py = 0
         let inside = false
+        let floodInView = false
         let x = 0
         let y = 0
         let rect: DOMRect | null = null
@@ -338,27 +349,34 @@ export const Sequence: FC = (): ReactNode => {
         const wake = () => {
             if (!stop) stop = addLoop(job)
         }
+        const floodObserver = new IntersectionObserver(([entry]) => {
+            floodInView = entry.isIntersecting
+            if (!floodInView) inside = false
+        })
+        floodObserver.observe(flood)
         const onMove = (event: PointerEvent) => {
             px = event.clientX
             py = event.clientY
             inside = true
+            floodInView = true
             wake()
         }
         const onLeave = () => {
             inside = false
         }
         const onScroll = () => {
-            if (inside) wake()
+            if (inside && floodInView) wake()
         }
-        window.addEventListener('pointermove', onMove, { passive: true })
+        flood.addEventListener('pointermove', onMove, { passive: true })
+        flood.addEventListener('pointerleave', onLeave)
         window.addEventListener('scroll', onScroll, { passive: true })
-        document.documentElement.addEventListener('pointerleave', onLeave)
 
         return () => {
             stop?.()
-            window.removeEventListener('pointermove', onMove)
+            floodObserver.disconnect()
+            flood.removeEventListener('pointermove', onMove)
+            flood.removeEventListener('pointerleave', onLeave)
             window.removeEventListener('scroll', onScroll)
-            document.documentElement.removeEventListener('pointerleave', onLeave)
         }
     }, [])
 
@@ -412,17 +430,18 @@ export const Sequence: FC = (): ReactNode => {
             })
         }
 
-        const makeCard = (data: OrbitCard, index: number, layer: HTMLDivElement) => {
+        const makeCard = (data: OrbitCard, index: number) => {
             const el = document.createElement('div')
             el.className = 'orbit-card'
             el.dataset.index = String(index)
             const img = document.createElement('img')
             img.src = data.src
             img.alt = ''
+            img.loading = 'lazy'
             img.decoding = 'async'
             img.draggable = false
             el.appendChild(img)
-            layer.appendChild(el)
+            worldBack.appendChild(el)
 
             return el
         }
@@ -435,8 +454,7 @@ export const Sequence: FC = (): ReactNode => {
             return {
                 data,
                 dir: [Math.cos(theta) * radius, y, Math.sin(theta) * radius],
-                back: makeCard(data, i, worldBack),
-                front: makeCard(data, i, worldFront),
+                el: makeCard(data, i),
                 w: 0,
                 h: 0,
                 z: 0,
@@ -452,27 +470,19 @@ export const Sequence: FC = (): ReactNode => {
                 const aspect = card.data.width / card.data.height
                 card.w = cardBase * Math.sqrt(aspect)
                 card.h = cardBase / Math.sqrt(aspect)
-                ;[card.back, card.front].forEach(el => {
-                    el.style.width = `${card.w}px`
-                    el.style.height = `${card.h}px`
-                    el.style.marginLeft = `${-card.w / 2}px`
-                    el.style.marginTop = `${-card.h / 2}px`
-                })
+                card.el.style.width = `${card.w}px`
+                card.el.style.height = `${card.h}px`
+                card.el.style.marginLeft = `${-card.w / 2}px`
+                card.el.style.marginTop = `${-card.h / 2}px`
             })
         }
         sizeCards()
-        // Card elements and their images are created only as the section approaches.
+        // Card elements and their images are created only once the orbit actually opens.
         const ensureCards = () => {
             if (cards.length) return
             cards = build()
             sizeCardEls()
-            builder.disconnect()
         }
-        const builder = new IntersectionObserver(([entry]) => {
-            if (!entry.isIntersecting) return
-            ensureCards()
-        }, { rootMargin: '0px 0px -15% 0px' })
-        builder.observe(wrap)
 
         let raw = 0
         let active = false
@@ -501,6 +511,12 @@ export const Sequence: FC = (): ReactNode => {
         let accentRgb: [number, number, number] = hexToRgb(root.style.getPropertyValue('--ember') || getComputedStyle(root).getPropertyValue('--ember'))
         let wasFar = false
         let wasClosed = false
+        let lastBg = ''
+        let lastClip = ''
+        let lastHintOp = ''
+        let lastStageOp = ''
+        let lastStageVis = ''
+        let cardsCollapsed = false
 
         const collapseAmount = () => clamp01((raw - COLLAPSE_START) / (1 - COLLAPSE_START))
 
@@ -537,7 +553,7 @@ export const Sequence: FC = (): ReactNode => {
             const from = pendingFrom
             pendingFrom = null
             overlay.getAnimations().forEach(animation => animation.cancel())
-            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+            if (prefersReducedMotion()) return
             overlay.animate([
                 { transform: `translate(${from.left - left}px, ${from.top - top}px) scale(${from.width / w}, ${from.height / h})` },
                 { transform: 'none' }
@@ -553,7 +569,7 @@ export const Sequence: FC = (): ReactNode => {
             ensureCards()
             const card = cards[index]
             if (!card) return
-            pendingFrom = (card.inFront ? card.front : card.back).getBoundingClientRect()
+            pendingFrom = card.el.getBoundingClientRect()
             focusIndex = index
             setFocused(card.data)
         }
@@ -569,10 +585,10 @@ export const Sequence: FC = (): ReactNode => {
 
                 return
             }
-            const target = (card.inFront ? card.front : card.back).getBoundingClientRect()
+            const target = card.el.getBoundingClientRect()
             const box = overlay.getBoundingClientRect()
             overlay.getAnimations().forEach(animation => animation.cancel())
-            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            if (prefersReducedMotion()) {
                 setFocused(null)
 
                 return
@@ -620,10 +636,17 @@ export const Sequence: FC = (): ReactNode => {
                 }
                 color = `rgb(${rgb.map(Math.round).join(',')})`
             }
-            flood.style.backgroundColor = color
+            if (color !== lastBg) {
+                lastBg = color
+                flood.style.backgroundColor = color
+            }
             flood.classList.toggle('is-collapsing', col > 0)
             flood.classList.toggle('is-closed', closed)
-            flood.style.clipPath = `circle(${Math.max(0, r).toFixed(1)}px at 50% 50%)`
+            const clip = `circle(${Math.max(0, r).toFixed(1)}px at 50% 50%)`
+            if (clip !== lastClip) {
+                lastClip = clip
+                flood.style.clipPath = clip
+            }
 
             // Once closed, the manifesto and ring are hidden and parked: write them on entry only.
             if (!closed || !wasClosed) {
@@ -652,22 +675,38 @@ export const Sequence: FC = (): ReactNode => {
             // Hint on the disc; the orbit is live between the closed disc and the collapse.
             const hintIn = clamp01((progress - 0.9) / 0.1)
             const hintOut = 1 - clamp01((col - 0.18) / 0.12)
-            hint.style.opacity = (hintIn * hintOut).toFixed(3)
+            const hintOpacity = (hintIn * hintOut).toFixed(3)
+            if (hintOpacity !== lastHintOp) {
+                lastHintOp = hintOpacity
+                hint.style.opacity = hintOpacity
+            }
             interactive = hintIn * hintOut > 0.5
             front.style.pointerEvents = interactive ? 'auto' : 'none'
             if (!interactive && focusIndex !== null) closeFocus()
 
             // After the explosion the stage hands off to the bone constellation beneath.
-            stage.style.opacity = (1 - clamp01((col - 0.95) / 0.05)).toFixed(3)
-            stage.style.visibility = col >= 1 ? 'hidden' : ''
+            const stageOpacity = (1 - clamp01((col - 0.95) / 0.05)).toFixed(3)
+            if (stageOpacity !== lastStageOp) {
+                lastStageOp = stageOpacity
+                stage.style.opacity = stageOpacity
+            }
+            const stageVis = col >= 1 ? 'hidden' : ''
+            if (stageVis !== lastStageVis) {
+                lastStageVis = stageVis
+                stage.style.visibility = stageVis
+            }
             const headerCovered = r > Math.hypot(vw / 2, vh / 2 - 40)
             const tone = col > EXPLODE_START && headerCovered ? 'bone' : headerCovered && col === 0 ? 'ember' : 'ink'
             if (stage.dataset.tone !== tone) stage.dataset.tone = tone
             flood.classList.toggle('tone-ember', col === 0)
 
+            if (raw > 0.01 && col < 1) ensureCards()
+
             const shouldRun = rect.top < 80 && rect.bottom > -200 && col < 1
             if (shouldRun !== active) {
                 active = shouldRun
+                back.classList.toggle('is-active', active)
+                front.classList.toggle('is-active', active)
                 back.style.visibility = active ? 'visible' : 'hidden'
                 front.style.visibility = active ? 'visible' : 'hidden'
                 if (active) {
@@ -695,12 +734,14 @@ export const Sequence: FC = (): ReactNode => {
                 }
                 hitSkip -= 1
             }
-            cards.forEach((card, i) => {
-                if (card.hover <= 0.01 && i !== hovered) return
-                const r = card.front.getBoundingClientRect()
-                card.cx = r.left + r.width / 2
-                card.cy = r.top + r.height / 2
-            })
+            if (!cardsCollapsed) {
+                cards.forEach((card, i) => {
+                    if (card.hover <= 0.01 && i !== hovered) return
+                    const r = card.el.getBoundingClientRect()
+                    card.cx = r.left + r.width / 2
+                    card.cy = r.top + r.height / 2
+                })
+            }
         }
 
         const tick = () => {
@@ -721,77 +762,84 @@ export const Sequence: FC = (): ReactNode => {
                 }
                 cardFactor = Math.pow(1 - clamp01((col - CARD_SHRINK_START) / (SUCK_END - CARD_SHRINK_START)), 1.8)
             }
-            const radius = sphereTarget * (ENTRY_SCALE - (ENTRY_SCALE - 1) * entry) * Math.max(0, sphereFactor)
-
-            focusAmt = clamp01(focusAmt + (focusIndex !== null ? 1 : -1) * dt * 1.7)
-            const spinTarget = focusIndex !== null || focusAmt > 0.02 ? 0 : 1
-            spinDamp += (spinTarget - spinDamp) * Math.min(1, dt * 2.4)
-
-            if (!dragging) {
-                if (Math.abs(velY) > 0.02 || Math.abs(velX) > 0.02) {
-                    rotY += velY * spinDamp
-                    rotX += velX * spinDamp
-                    const f = Math.pow(FRICTION, dt * 60)
-                    velY *= f
-                    velX *= f
-                } else {
-                    velY = 0
-                    velX = 0
-                    rotY += dt * AUTO_SPEED * spinDamp
-                }
+            const collapsed = sphereFactor <= 0
+            if (collapsed !== cardsCollapsed) {
+                cardsCollapsed = collapsed
+                const vis = collapsed ? 'hidden' : ''
+                worldBack.style.visibility = vis
+                worldFront.style.visibility = vis
             }
-            rotX = Math.max(-40, Math.min(50, rotX))
 
-            const world = `rotateX(${rotX.toFixed(3)}deg) rotateY(${rotY.toFixed(3)}deg)`
-            worldBack.style.transform = world
-            worldFront.style.transform = world
-            const ry = rotY * Math.PI / 180
-            const rx = rotX * Math.PI / 180
-            const cosY = Math.cos(ry)
-            const sinY = Math.sin(ry)
-            const cosX = Math.cos(rx)
-            const sinX = Math.sin(rx)
-            const billboard = `rotateY(${(-rotY).toFixed(3)}deg) rotateX(${(-rotX).toFixed(3)}deg)`
-            const dim = 1 - (1 - FOCUS_DIM) * easeInOutCubic(focusAmt)
+            if (!collapsed) {
+                const radius = sphereTarget * (ENTRY_SCALE - (ENTRY_SCALE - 1) * entry) * sphereFactor
 
-            cards.forEach((card, i) => {
-                const [dx, dy, dz] = card.dir
-                const px = dx * radius
-                const py = dy * radius
-                const pz = dz * radius
-                const z1 = -px * sinY + pz * cosY
-                const z2 = py * sinX + z1 * cosX
-                card.z = z2
-                const depth = clamp01((z2 / Math.max(1, radius) + 1) / 2)
-                const inFront = z2 > 0
-                if (inFront !== card.inFront) {
-                    card.inFront = inFront
-                    card.front.style.visibility = inFront ? 'visible' : 'hidden'
-                    card.back.style.visibility = inFront ? 'hidden' : 'visible'
-                    card.lastOpacity = ''
+                focusAmt = clamp01(focusAmt + (focusIndex !== null ? 1 : -1) * dt * 1.7)
+                const spinTarget = focusIndex !== null || focusAmt > 0.02 ? 0 : 1
+                spinDamp += (spinTarget - spinDamp) * Math.min(1, dt * 2.4)
+
+                if (!dragging) {
+                    if (Math.abs(velY) > 0.02 || Math.abs(velX) > 0.02) {
+                        rotY += velY * spinDamp
+                        rotX += velX * spinDamp
+                        const f = Math.pow(FRICTION, dt * 60)
+                        velY *= f
+                        velX *= f
+                    } else {
+                        velY = 0
+                        velX = 0
+                        rotY += dt * AUTO_SPEED * spinDamp
+                    }
                 }
-                const el = inFront ? card.front : card.back
-                card.hover += ((hovered === i ? 1 : 0) - card.hover) * Math.min(1, dt * 9)
+                rotX = Math.max(-40, Math.min(50, rotX))
 
-                let magX = 0
-                let magY = 0
-                if (card.hover > 0.01) {
-                    const cx = card.cx
-                    const cy = card.cy
-                    const dist = Math.hypot(pointerX - cx, pointerY - cy) || 1
-                    magX = (pointerX - cx) / dist * MAGNET_PX * card.hover
-                    magY = (pointerY - cy) / dist * MAGNET_PX * card.hover
-                }
-                const scale = (1 + HOVER_SCALE * card.hover) * cardFactor * (focusIndex === i ? 0.001 : 1)
-                const transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, ${pz.toFixed(1)}px) ${billboard} translate(${magX.toFixed(1)}px, ${magY.toFixed(1)}px) scale(${scale.toFixed(3)})`
-                el.style.transform = transform
+                const world = `rotateX(${rotX.toFixed(3)}deg) rotateY(${rotY.toFixed(3)}deg)`
+                worldBack.style.transform = world
+                worldFront.style.transform = world
+                const ry = rotY * Math.PI / 180
+                const rx = rotX * Math.PI / 180
+                const cosY = Math.cos(ry)
+                const sinY = Math.sin(ry)
+                const cosX = Math.cos(rx)
+                const sinX = Math.sin(rx)
+                const billboard = `rotateY(${(-rotY).toFixed(3)}deg) rotateX(${(-rotX).toFixed(3)}deg)`
+                const dim = 1 - (1 - FOCUS_DIM) * easeInOutCubic(focusAmt)
 
-                const opacity = ((0.26 + 0.74 * depth) * dim).toFixed(2)
-                if (opacity !== card.lastOpacity) {
-                    card.lastOpacity = opacity
-                    el.style.opacity = opacity
-                }
-            })
+                cards.forEach((card, i) => {
+                    const [dx, dy, dz] = card.dir
+                    const px = dx * radius
+                    const py = dy * radius
+                    const pz = dz * radius
+                    const z1 = -px * sinY + pz * cosY
+                    const z2 = py * sinX + z1 * cosX
+                    card.z = z2
+                    const depth = clamp01((z2 / Math.max(1, radius) + 1) / 2)
+                    const inFront = z2 > 0
+                    if (inFront !== card.inFront) {
+                        card.inFront = inFront
+                        ;(inFront ? worldFront : worldBack).appendChild(card.el)
+                        card.lastOpacity = ''
+                    }
+                    card.hover += ((hovered === i ? 1 : 0) - card.hover) * Math.min(1, dt * 9)
+
+                    let magX = 0
+                    let magY = 0
+                    if (card.hover > 0.01) {
+                        const cx = card.cx
+                        const cy = card.cy
+                        const dist = Math.hypot(pointerX - cx, pointerY - cy) || 1
+                        magX = (pointerX - cx) / dist * MAGNET_PX * card.hover
+                        magY = (pointerY - cy) / dist * MAGNET_PX * card.hover
+                    }
+                    const scale = (1 + HOVER_SCALE * card.hover) * cardFactor * (focusIndex === i ? 0.001 : 1)
+                    card.el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, ${pz.toFixed(1)}px) ${billboard} translate(${magX.toFixed(1)}px, ${magY.toFixed(1)}px) scale(${scale.toFixed(3)})`
+
+                    const opacity = ((0.26 + 0.74 * depth) * dim).toFixed(2)
+                    if (opacity !== card.lastOpacity) {
+                        card.lastOpacity = opacity
+                        card.el.style.opacity = opacity
+                    }
+                })
+            }
 
             if (inside && interactive) {
                 const drag = dragging ? (velY < -0.05 ? 'orbit-left' : velY > 0.05 ? 'orbit-right' : 'orbit') : 'orbit'
@@ -895,7 +943,18 @@ export const Sequence: FC = (): ReactNode => {
 
         measureRows()
         updateFlood()
-        window.addEventListener('scroll', updateFlood, { passive: true })
+        let inRange = rect.bottom >= -window.innerHeight && rect.top <= window.innerHeight * 2
+        const onScroll = () => {
+            if (inRange) updateFlood()
+        }
+        const rangeObserver = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting === inRange) return
+            inRange = entry.isIntersecting
+            wasFar = false
+            updateFlood()
+        }, { rootMargin: '100% 0px' })
+        rangeObserver.observe(wrap)
+        window.addEventListener('scroll', onScroll, { passive: true })
         window.addEventListener('resize', onResize)
         window.addEventListener('keydown', onKey)
         document.addEventListener('click', refreshAccent)
@@ -908,8 +967,8 @@ export const Sequence: FC = (): ReactNode => {
 
         return () => {
             stopOrbit?.()
-            builder.disconnect()
-            window.removeEventListener('scroll', updateFlood)
+            rangeObserver.disconnect()
+            window.removeEventListener('scroll', onScroll)
             window.removeEventListener('resize', onResize)
             window.removeEventListener('keydown', onKey)
             document.removeEventListener('click', refreshAccent)
@@ -919,6 +978,8 @@ export const Sequence: FC = (): ReactNode => {
             front.removeEventListener('pointercancel', onLeave)
             front.removeEventListener('pointerenter', onEnter)
             front.removeEventListener('pointerleave', onLeave)
+            back.classList.remove('is-active')
+            front.classList.remove('is-active')
             worldBack.replaceChildren()
             worldFront.replaceChildren()
             setCursor('')
@@ -933,7 +994,7 @@ export const Sequence: FC = (): ReactNode => {
     useEffect(() => {
         slideCountRef.current = slides.length
         setSlide(0)
-        if (slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+        if (slides.length < 2 || prefersReducedMotion()) return
         const timer = window.setInterval(() => setSlide(index => (index + 1) % slides.length), SLIDE_MS)
 
         return () => window.clearInterval(timer)

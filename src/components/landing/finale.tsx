@@ -14,7 +14,7 @@ import {
 
 import { cn } from '@/lib/utils'
 import { addLoop, requestFrame } from '@/lib/frame'
-import { clamp01, prefersReducedMotion } from '@/lib/motion'
+import { clamp01, isLowPowerDevice, prefersReducedMotion } from '@/lib/motion'
 import { CONTACT } from '@/constants/folio'
 
 // Orb flight, in viewport heights relative to the ring's centre.
@@ -125,6 +125,7 @@ export const Finale: FC = (): ReactNode => {
         const orb = orbRef.current
         if (!wrap || !ground || !ring || !orb) return
         const reduced = prefersReducedMotion()
+        const staticMode = reduced || isLowPowerDevice()
         let flightStart = 0
         let stopFlight: (() => void) | null = null
 
@@ -136,6 +137,16 @@ export const Finale: FC = (): ReactNode => {
             orb.classList.toggle('is-front', g >= APEX_AT)
             orb.classList.toggle('is-cta', g > 0.86)
         }
+
+        if (staticMode) {
+            ground.style.clipPath = 'none'
+            ring.style.opacity = '1'
+            ring.style.transform = 'scale(1)'
+            setOrb(1)
+
+            return
+        }
+
         const flightJob: FrameJob = {
             write: () => {
                 const g = clamp01((performance.now() - flightStart) / FLIGHT_MS)
@@ -148,12 +159,6 @@ export const Finale: FC = (): ReactNode => {
         }
         const launch = () => {
             if (flightStart) return
-            if (reduced) {
-                flightStart = 1
-                setOrb(1)
-
-                return
-            }
             flightStart = performance.now()
             stopFlight = addLoop(flightJob)
         }
@@ -166,46 +171,83 @@ export const Finale: FC = (): ReactNode => {
         }
 
         // The horizon bulges as the section arrives: a circular arc across the full width.
-        let rect = wrap.getBoundingClientRect()
-        let wasFar = false
-        const update = () => {
-            const vh = window.innerHeight
+        let rect: DOMRect | null = null
+        let inRange = false
+        let needsLeaveSync = false
+        let lastClip = ''
+        let lastRingOpacity = ''
+        let lastRingTransform = ''
+
+        const applyProgress = (e: number) => {
             const vw = window.innerWidth
-            const far = rect.bottom < -vh || rect.top > vh * 2
-            if (far && wasFar) return
-            wasFar = far
-            const t = clamp01((vh * 1.1 - rect.top) / (vh * 0.9))
-            const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
             const depth = e * vw * 0.134
-            if (depth < 0.5) {
-                ground.style.clipPath = 'none'
-            } else {
+            let nextClip = 'none'
+            if (depth >= 0.5) {
                 const radius = (vw * vw / 4 + depth * depth) / (2 * depth)
-                ground.style.clipPath = `circle(${radius.toFixed(1)}px at 50% ${radius.toFixed(1)}px)`
+                nextClip = `circle(${radius.toFixed(1)}px at 50% ${radius.toFixed(1)}px)`
             }
-            ring.style.setProperty('--ring-in', e.toFixed(3))
+            if (nextClip !== lastClip) {
+                lastClip = nextClip
+                ground.style.clipPath = nextClip
+            }
+
+            const nextOpacity = e.toFixed(3)
+            if (nextOpacity !== lastRingOpacity) {
+                lastRingOpacity = nextOpacity
+                ring.style.opacity = nextOpacity
+            }
+
+            const nextTransform = `scale(${(0.7 + 0.3 * e).toFixed(4)})`
+            if (nextTransform !== lastRingTransform) {
+                lastRingTransform = nextTransform
+                ring.style.transform = nextTransform
+            }
+
             if (e > 0.85) launch()
             else if (e < 0.75) recall()
         }
 
         const job: FrameJob = {
             read: () => {
+                if (!inRange) return
                 rect = wrap.getBoundingClientRect()
             },
-            write: update
+            write: () => {
+                if (!inRange) {
+                    if (!needsLeaveSync) return
+                    needsLeaveSync = false
+                    applyProgress(0)
+
+                    return
+                }
+                needsLeaveSync = false
+                if (!rect) return
+                const vh = window.innerHeight
+                const t = clamp01((vh * 1.1 - rect.top) / (vh * 0.9))
+                const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+                applyProgress(e)
+            }
         }
-        const onScroll = () => requestFrame(job)
-        const onResize = () => {
-            wasFar = false
+        const onScroll = () => {
+            if (!inRange && !needsLeaveSync) return
             requestFrame(job)
         }
+        const onResize = () => onScroll()
+
+        const observer = new IntersectionObserver(([entry]) => {
+            const nextInRange = entry.isIntersecting
+            if (inRange && !nextInRange) needsLeaveSync = true
+            inRange = nextInRange
+            onScroll()
+        }, { rootMargin: '100% 0px' })
+        observer.observe(wrap)
 
         setOrb(0)
-        onScroll()
         window.addEventListener('scroll', onScroll, { passive: true })
         window.addEventListener('resize', onResize)
 
         return () => {
+            observer.disconnect()
             window.removeEventListener('scroll', onScroll)
             window.removeEventListener('resize', onResize)
             stopFlight?.()
@@ -306,23 +348,38 @@ export const SiteFooter: FC = (): ReactNode => {
     const time = useManilaTime()
 
     useEffect(() => {
+        let docHeight = document.documentElement.scrollHeight
+        let lastState: 'top' | 'end' | 'hidden' = 'top'
         let next: 'top' | 'end' | 'hidden' = 'top'
         const job: FrameJob = {
             read: () => {
                 const y = window.scrollY
-                const end = y + window.innerHeight >= document.documentElement.scrollHeight - 4
+                const end = y + window.innerHeight >= docHeight - 4
                 next = y <= 24 ? 'top' : end ? 'end' : 'hidden'
             },
-            write: () => setState(next)
+            write: () => {
+                if (next === lastState) return
+                lastState = next
+                setState(next)
+            }
         }
         const onScroll = () => requestFrame(job)
+        const measureDoc = () => {
+            docHeight = document.documentElement.scrollHeight
+            onScroll()
+        }
+        const resizeObserver = new ResizeObserver(measureDoc)
+        resizeObserver.observe(document.documentElement)
+        resizeObserver.observe(document.body)
+
         onScroll()
         window.addEventListener('scroll', onScroll, { passive: true })
-        window.addEventListener('resize', onScroll)
+        window.addEventListener('resize', measureDoc)
 
         return () => {
+            resizeObserver.disconnect()
             window.removeEventListener('scroll', onScroll)
-            window.removeEventListener('resize', onScroll)
+            window.removeEventListener('resize', measureDoc)
         }
     }, [])
 

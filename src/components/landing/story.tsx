@@ -4,7 +4,7 @@ import type { FrameJob } from '@/lib/frame'
 import { Fragment, useEffect, useRef } from 'react'
 
 import { requestFrame } from '@/lib/frame'
-import { prefersReducedMotion, splitChars } from '@/lib/motion'
+import { isLowPowerDevice, prefersReducedMotion, splitChars } from '@/lib/motion'
 import { TOOLBOX } from '@/constants/folio'
 
 interface Chapter {
@@ -47,24 +47,19 @@ export const Story: FC = (): ReactNode => {
         const section = sectionRef.current
         if (!section) return
         const reduced = prefersReducedMotion()
+        const staticMode = reduced || isLowPowerDevice()
         const slots = Array.from(section.querySelectorAll<HTMLElement>('[data-slot]'))
         const keys = Array.from(section.querySelectorAll<HTMLElement>('[data-key]'))
-        const posts = slots.map(slot => {
-            const text = slot.querySelector<HTMLElement>('[data-wave]')
-            const chars = text && !reduced ? splitChars(text, 'z') : []
-            const underline = slot.querySelector<HTMLElement>('.bio-underline')
-            const firstUnder = underline?.querySelector<HTMLElement>('.z')
-
-            return {
-                slot,
-                hold: slot.querySelector<HTMLElement>('[data-hold]'),
-                chars,
-                underline,
-                underAt: firstUnder ? chars.indexOf(firstUnder) : -1,
-                lo: 0,
-                hi: -1
-            }
-        })
+        const posts = slots.map(slot => ({
+            slot,
+            text: slot.querySelector<HTMLElement>('[data-wave]'),
+            hold: slot.querySelector<HTMLElement>('[data-hold]'),
+            chars: [] as HTMLSpanElement[],
+            underline: slot.querySelector<HTMLElement>('.bio-underline'),
+            underAt: -1,
+            lo: 0,
+            hi: -1
+        }))
 
         const setWindow = (post: typeof posts[number], lo: number, hi: number) => {
             lo = Math.max(0, lo)
@@ -80,29 +75,48 @@ export const Story: FC = (): ReactNode => {
             post.hi = hi
         }
 
-        // Sticky offsets only change with the viewport, so they are measured once per resize.
+        // Sticky offsets and hold heights only change on resize or text split, so they are measured outside scroll frames.
         let holdTops: number[] = []
+        let holdHeights: number[] = []
         const measure = () => {
             holdTops = posts.map(post => post.hold ? parseFloat(getComputedStyle(post.hold).top) || 0 : 0)
+            holdHeights = posts.map(post => post.hold?.offsetHeight ?? 0)
         }
         measure()
-        let far = false
-        let wasFar = false
+        let inRange = false
+        let needsLeaveSync = false
+        let leaveAbove = false
+        let lastCurrent = -1
         let rects: DOMRect[] = []
-        let holdHeights: number[] = []
+
+        const setCurrent = (current: number) => {
+            if (current === lastCurrent) return
+            lastCurrent = current
+            keys.forEach((key, index) => key.classList.toggle('is-current', index === current))
+        }
 
         const update = () => {
-            if (far && wasFar) return
-            wasFar = far
-            if (far) return
-            const vh = window.innerHeight
             const stacked = window.innerWidth <= 720
+            if (!inRange) {
+                if (!needsLeaveSync) return
+                needsLeaveSync = false
+                posts.forEach(post => {
+                    setWindow(post, 0, -1)
+                    post.underline?.classList.toggle('is-drawn', leaveAbove && (stacked || !post.hold || staticMode || post.underAt >= 0))
+                })
+                setCurrent(leaveAbove ? posts.length - 1 : -1)
+
+                return
+            }
+            needsLeaveSync = false
+            const vh = window.innerHeight
             let current = -1
 
             posts.forEach((post, index) => {
                 const rect = rects[index]
+                if (!rect) return
                 if (rect.top < vh * 0.5) current = index
-                if (stacked || !post.hold || reduced) {
+                if (stacked || !post.hold || staticMode) {
                     setWindow(post, 0, -1)
                     post.underline?.classList.toggle('is-drawn', rect.top < vh * 0.55)
 
@@ -115,30 +129,64 @@ export const Story: FC = (): ReactNode => {
                 setWindow(post, front - WINDOW + 1, front)
                 post.underline?.classList.toggle('is-drawn', post.underAt >= 0 && front >= post.underAt)
             })
-            keys.forEach((key, index) => key.classList.toggle('is-current', index === current))
+            setCurrent(current)
         }
         const job: FrameJob = {
             read: () => {
-                const box = section.getBoundingClientRect()
-                const vh = window.innerHeight
-                far = box.bottom < -vh || box.top > vh * 2
-                if (far) return
+                if (!inRange) return
                 rects = posts.map(post => post.slot.getBoundingClientRect())
-                holdHeights = posts.map(post => post.hold?.offsetHeight ?? 0)
             },
             write: update
         }
-        const onScroll = () => requestFrame(job)
-        const onResize = () => {
-            measure()
-            wasFar = false
+        const onScroll = () => {
+            if (!inRange && !needsLeaveSync) return
             requestFrame(job)
         }
-        onScroll()
+        const onResize = () => {
+            measure()
+            onScroll()
+        }
+
+        let splitDone = false
+        const ensureSplit = () => {
+            if (splitDone || staticMode) return
+            splitDone = true
+            posts.forEach(post => {
+                if (!post.text) return
+                post.chars = splitChars(post.text, 'z')
+                const firstUnder = post.underline?.querySelector<HTMLElement>('.z')
+                post.underAt = firstUnder ? post.chars.indexOf(firstUnder) : -1
+            })
+            measure()
+            onScroll()
+        }
+
+        const splitObserver = !staticMode
+            ? new IntersectionObserver(([entry]) => {
+                if (!entry.isIntersecting) return
+                ensureSplit()
+                splitObserver?.disconnect()
+            }, { rootMargin: '600px 0px' })
+            : null
+        splitObserver?.observe(section)
+
+        const scrollObserver = new IntersectionObserver(([entry]) => {
+            const nextInRange = entry.isIntersecting
+            if (inRange && !nextInRange) {
+                needsLeaveSync = true
+                leaveAbove = entry.boundingClientRect.bottom < 0
+            }
+            inRange = nextInRange
+            onScroll()
+        }, { rootMargin: '80% 0px' })
+        scrollObserver.observe(section)
+
         window.addEventListener('scroll', onScroll, { passive: true })
         window.addEventListener('resize', onResize)
 
         return () => {
+            splitObserver?.disconnect()
+            scrollObserver.disconnect()
             window.removeEventListener('scroll', onScroll)
             window.removeEventListener('resize', onResize)
         }

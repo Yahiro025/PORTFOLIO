@@ -3,7 +3,7 @@ import type { FC, ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 
 import { cn } from '@/lib/utils'
-import { finePointer, prefersReducedMotion } from '@/lib/motion'
+import { finePointer, hasHardwareGpu, isLowPowerDevice, prefersReducedMotion } from '@/lib/motion'
 import { PROFILE_IMAGE } from '@/constants/folio'
 
 interface DepthPortraitProps {
@@ -14,7 +14,7 @@ const PHOTO_SRC = '/profile-1080.webp'
 const DEPTH_SRC = '/profile-depth.webp'
 const STRENGTH = 0.014
 const INERTIA = 3.2
-const MAX_PIXELS = 2.4e6
+const MAX_PIXELS = 1.2e6
 
 const VERTEX = `attribute vec2 aPos; varying vec2 vUv;
 void main(){ vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = vec4(aPos, 0.0, 1.0); }`
@@ -45,7 +45,7 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
     useEffect(() => {
         const wrap = wrapRef.current
         const canvas = canvasRef.current
-        if (!wrap || !canvas || !finePointer() || prefersReducedMotion()) return
+        if (!wrap || !canvas || !finePointer() || prefersReducedMotion() || !hasHardwareGpu() || isLowPowerDevice()) return
 
         // A lost WebGL canvas composites as solid white, so the fallback swap never fades.
         const hideCanvas = () => {
@@ -70,7 +70,8 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
             stencil: false,
             premultipliedAlpha: true,
             preserveDrawingBuffer: true,
-            powerPreference: 'low-power'
+            powerPreference: 'low-power',
+            failIfMajorPerformanceCaveat: true
         })
         if (!gl) return
 
@@ -149,7 +150,7 @@ export const DepthPortrait: FC<DepthPortraitProps> = ({ className }): ReactNode 
         let inView = true
 
         const resize = () => {
-            const ratio = Math.min(window.devicePixelRatio || 1, 2)
+            const ratio = Math.min(window.devicePixelRatio || 1, 1.5)
             let width = Math.round(wrap.clientWidth * ratio)
             let height = Math.round(wrap.clientHeight * ratio)
             const scale = Math.min(1, Math.sqrt(MAX_PIXELS / Math.max(1, width * height)))
