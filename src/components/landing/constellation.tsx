@@ -7,7 +7,7 @@ import { ArrowUpRight, BellRing } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { addLoop, requestFrame } from '@/lib/frame'
-import { finePointer, prefersReducedMotion, richMotion } from '@/lib/motion'
+import { finePointer, isLowPowerDevice, prefersReducedMotion, richMotion } from '@/lib/motion'
 import { OPEN_SOURCE_PR_COUNT, OPEN_SOURCE_REPO_COUNT, OPEN_SOURCE_STARS, openSource } from '@/constants/folio'
 
 const mark = (d: string): FC<{ className?: string }> => ({ className }) => (
@@ -28,6 +28,7 @@ type Variant = 'accent' | 'ink' | 'ring'
 interface OrbitNode {
     radius: number
     duration: number
+    restAngle: number
     size: number
     variant: Variant
     icon: ComponentType<{ className?: string }>
@@ -37,13 +38,13 @@ interface OrbitNode {
 
 // Flagship labelled tracks sit on the inner rings; the outer rings carry unlabelled OSS project marks.
 const NODES: OrbitNode[] = [
-    { radius: 130, duration: 12, size: 25, variant: 'accent', icon: PrettierMark, label: 'prettier #20015' },
-    { radius: 195, duration: 21.6, size: 20, variant: 'ink', icon: PnpmMark, label: 'pnpm #14878', moon: 18 },
-    { radius: 285, duration: 24, size: 18, variant: 'accent', icon: HonoMark, label: 'hono #5423' },
-    { radius: 355, duration: 27, size: 26, variant: 'ring', icon: BellRing, label: 'tabby #11651' },
-    { radius: 425, duration: 36, size: 19, variant: 'ring', icon: HotwireMark },
-    { radius: 480, duration: 54, size: 25, variant: 'ink', icon: SolidMark, moon: 14.4 },
-    { radius: 540, duration: 72, size: 26, variant: 'ring', icon: LeafletMark, moon: 43.2 }
+    { radius: 130, duration: 12, restAngle: -42, size: 25, variant: 'accent', icon: PrettierMark, label: 'prettier #20015' },
+    { radius: 195, duration: 21.6, restAngle: 28, size: 20, variant: 'ink', icon: PnpmMark, label: 'pnpm #14878', moon: 18 },
+    { radius: 285, duration: 24, restAngle: -132, size: 18, variant: 'accent', icon: HonoMark, label: 'hono #5423' },
+    { radius: 355, duration: 27, restAngle: 118, size: 26, variant: 'ring', icon: BellRing, label: 'tabby #11651' },
+    { radius: 425, duration: 36, restAngle: -12, size: 19, variant: 'ring', icon: HotwireMark },
+    { radius: 480, duration: 54, restAngle: -86, size: 25, variant: 'ink', icon: SolidMark, moon: 14.4 },
+    { radius: 540, duration: 72, restAngle: 156, size: 26, variant: 'ring', icon: LeafletMark, moon: 43.2 }
 ]
 const RINGS = [130, 195, 285, 355, 425, 480, 540]
 const CASES = 'Tabby · Prettier · Leaflet · Swiper · Tiptap · Marked · pnpm · Solid · Hono · Actual · Immer · Plotly.js · Shiki · Undici · Turbo · TypeScript · Rust · '
@@ -95,12 +96,21 @@ export const Constellation: FC = (): ReactNode => {
             }
         }
         const check = () => requestFrame(bornJob)
-        check()
-        window.addEventListener('scroll', check, { passive: true })
+        let inRange = false
+        const onScroll = () => {
+            if (inRange) check()
+        }
+        const range = new IntersectionObserver(([entry]) => {
+            inRange = entry.isIntersecting
+            check()
+        }, { rootMargin: '60% 0px' })
+        range.observe(section)
+        window.addEventListener('scroll', onScroll, { passive: true })
 
         return () => {
             visibility.disconnect()
-            window.removeEventListener('scroll', check)
+            range.disconnect()
+            window.removeEventListener('scroll', onScroll)
         }
     }, [])
 
@@ -109,7 +119,7 @@ export const Constellation: FC = (): ReactNode => {
         const sticky = stickyRef.current
         const field = fieldRef.current
         const canvas = plexusRef.current
-        if (!sticky || !field || !canvas || prefersReducedMotion()) return
+        if (!sticky || !field || !canvas || prefersReducedMotion() || isLowPowerDevice()) return
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
@@ -142,8 +152,10 @@ export const Constellation: FC = (): ReactNode => {
         let fieldHeight = 0
         let reach = 0
         // The sticky box only moves while it is still in flow, so its rect survives until a scroll or resize.
+        let stop: (() => void) | null = null
         let layoutDirty = true
         const onLayout = () => {
+            if (!stop) return
             layoutDirty = true
         }
         window.addEventListener('scroll', onLayout, { passive: true })
@@ -223,7 +235,6 @@ export const Constellation: FC = (): ReactNode => {
             }
         }
         // Lines are drawn only while the section is on screen.
-        let stop: (() => void) | null = null
         const visible = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && !stop) {
                 layoutDirty = true
@@ -258,7 +269,7 @@ export const Constellation: FC = (): ReactNode => {
             if (disposed) return
             const size = field.getBoundingClientRect().width
             if (!size) return
-            const dpr = 2
+            const dpr = isLowPowerDevice() ? 1 : 2
             canvas.width = Math.round(size * dpr)
             canvas.height = canvas.width
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -317,7 +328,8 @@ export const Constellation: FC = (): ReactNode => {
         const guest = guestRef.current
         const title = titleRef.current
         const field = fieldRef.current
-        if (!dot || !guest || !title || !field || prefersReducedMotion() || window.innerWidth < 640) return
+        const section = sectionRef.current
+        if (!dot || !guest || !title || !field || !section || prefersReducedMotion() || isLowPowerDevice() || window.innerWidth < 640) return
 
         const fly = document.createElement('div')
         fly.className = 'cn-fly'
@@ -388,11 +400,20 @@ export const Constellation: FC = (): ReactNode => {
             }
         }
         const check = () => requestFrame(flyJob)
-        window.addEventListener('scroll', check, { passive: true })
-        check()
+        let inRange = false
+        const onScroll = () => {
+            if (inRange) check()
+        }
+        const range = new IntersectionObserver(([entry]) => {
+            inRange = entry.isIntersecting
+            check()
+        }, { rootMargin: '60% 0px' })
+        range.observe(section)
+        window.addEventListener('scroll', onScroll, { passive: true })
 
         return () => {
-            window.removeEventListener('scroll', check)
+            range.disconnect()
+            window.removeEventListener('scroll', onScroll)
             cancelAnimationFrame(raf)
             fly.remove()
         }
@@ -447,7 +468,8 @@ export const Constellation: FC = (): ReactNode => {
                                     style={{
                                         ['--r' as string]: String(node.radius),
                                         ['--s' as string]: String(node.size),
-                                        ['--dur' as string]: `${node.duration}s`
+                                        ['--dur' as string]: `${node.duration}s`,
+                                        ['--a' as string]: `${node.restAngle}deg`
                                     }}
                                 >
                                     <div className='cn-offset'>
