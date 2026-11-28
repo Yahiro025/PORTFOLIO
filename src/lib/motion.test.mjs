@@ -3,8 +3,12 @@ import test from 'node:test'
 
 import {
     clamp01,
+    detectLowPower,
     easeInOutCubic,
     easeOutCubic,
+    hasHardwareGpu,
+    isLowPowerDevice,
+    isSoftwareRenderer,
     normAngle,
     pinProgress,
     smoothstep
@@ -108,4 +112,36 @@ test('normAngle wraps into [-PI, PI] and keeps the same direction', () => {
         near(Math.cos(wrapped), Math.cos(angle))
         near(Math.sin(wrapped), Math.sin(angle))
     }
+})
+
+test('detectLowPower identifies low-end, reduced-motion, and save-data environments', () => {
+    const capable = { reduced: false, hardwareGpu: true, cores: 4, memoryGb: 8, saveData: false }
+
+    assert.equal(detectLowPower(capable), false)
+    assert.equal(detectLowPower({ reduced: false, hardwareGpu: true }), false)
+    assert.equal(detectLowPower({ ...capable, hardwareGpu: false }), true)
+    assert.equal(detectLowPower({ ...capable, cores: 2 }), true)
+    assert.equal(detectLowPower({ ...capable, cores: 1 }), true)
+    assert.equal(detectLowPower({ ...capable, cores: 0 }), false)
+    assert.equal(detectLowPower({ ...capable, memoryGb: 2 }), true)
+    assert.equal(detectLowPower({ ...capable, memoryGb: 1 }), true)
+    assert.equal(detectLowPower({ ...capable, memoryGb: 0 }), false)
+    assert.equal(detectLowPower({ ...capable, saveData: true }), true)
+    assert.equal(detectLowPower({ ...capable, reduced: true }), true)
+})
+
+test('hasHardwareGpu and isLowPowerDevice fall back safely without DOM globals', () => {
+    assert.equal(hasHardwareGpu(), true)
+    assert.equal(isLowPowerDevice(), false)
+})
+
+test('isSoftwareRenderer detects software WebGL renderers and passes hardware GPUs', () => {
+    assert.equal(isSoftwareRenderer('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)'), true)
+    assert.equal(isSoftwareRenderer('llvmpipe (LLVM 15.0.7, 256 bits)'), true)
+    assert.equal(isSoftwareRenderer('ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)'), true)
+    assert.equal(isSoftwareRenderer('Mesa Offscreen'), true)
+    assert.equal(isSoftwareRenderer('Apple M3'), false)
+    assert.equal(isSoftwareRenderer('ANGLE (NVIDIA, NVIDIA GeForce RTX 4080 Direct3D11 vs_5_0 ps_5_0, D3D11)'), false)
+    assert.equal(isSoftwareRenderer('ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)'), false)
+    assert.equal(isSoftwareRenderer(''), false)
 })

@@ -20,9 +20,71 @@ export const prefersReducedMotion = (): boolean =>
 export const finePointer = (): boolean =>
     typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
+let gpuCached: boolean | null = null
+
+export const isSoftwareRenderer = (renderer: string): boolean =>
+    /swiftshader|llvmpipe|software|basic render driver|mesa offscreen|subzero/i.test(renderer)
+
+export const hasHardwareGpu = (): boolean => {
+    if (typeof document === 'undefined') return true
+    if (gpuCached !== null) return gpuCached
+
+    try {
+        const canvas = document.createElement('canvas')
+        const options: WebGLContextAttributes = { failIfMajorPerformanceCaveat: true }
+        const gl = (canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options)) as WebGLRenderingContext | null
+        if (gl) {
+            let renderer = ''
+            try {
+                const dbg = gl.getExtension('WEBGL_debug_renderer_info')
+                renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) ?? '') : ''
+            } catch {
+                // Blocked debug renderer info still leaves failIfMajorPerformanceCaveat as the signal.
+            }
+            gl.getExtension('WEBGL_lose_context')?.loseContext()
+            gpuCached = !isSoftwareRenderer(renderer)
+        } else {
+            gpuCached = false
+        }
+    } catch {
+        gpuCached = false
+    }
+
+    return gpuCached
+}
+
+export const detectLowPower = (env: {
+    reduced: boolean
+    hardwareGpu: boolean
+    cores?: number
+    memoryGb?: number
+    saveData?: boolean
+}): boolean =>
+    env.reduced
+    || !env.hardwareGpu
+    || (typeof env.cores === 'number' && env.cores > 0 && env.cores <= 2)
+    || (typeof env.memoryGb === 'number' && env.memoryGb > 0 && env.memoryGb <= 2)
+    || env.saveData === true
+
+export const isLowPowerDevice = (): boolean => {
+    if (typeof window === 'undefined') return false
+
+    const nav = typeof navigator !== 'undefined'
+        ? (navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } })
+        : undefined
+
+    return detectLowPower({
+        reduced: prefersReducedMotion(),
+        hardwareGpu: hasHardwareGpu(),
+        cores: nav?.hardwareConcurrency,
+        memoryGb: nav?.deviceMemory,
+        saveData: nav?.connection?.saveData
+    })
+}
+
 // The full scroll choreography needs a mouse, room to breathe, and motion allowed.
 export const richMotion = (): boolean =>
-    finePointer() && !prefersReducedMotion() && window.innerWidth >= 768
+    finePointer() && !prefersReducedMotion() && !isLowPowerDevice() && window.innerWidth >= 768
 
 // Progress of a tall scroll wrapper through its sticky reserve, 0 to 1.
 export const pinProgress = (wrap: HTMLElement, rect: DOMRect = wrap.getBoundingClientRect()): number => {
